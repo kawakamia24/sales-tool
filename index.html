@@ -65,6 +65,7 @@
           </optgroup>
           <option value="Event">Event</option>
           <option value="ColÄ">ColÄ</option>
+          <option value="その他">その他</option>
         </select>
       </div>
       <div id="count-field" style="display:none">
@@ -74,6 +75,10 @@
       <div id="event-name-field" style="display:none">
         <label>イベント名</label>
         <input type="text" id="inp-event-name" placeholder="例: 〇〇フェス">
+      </div>
+      <div id="other-name-field" style="display:none">
+        <label>商品名（詳細）</label>
+        <input type="text" id="inp-other-name" placeholder="例: ドリンク販売">
       </div>
       <div id="cola-preset-field" style="display:none">
         <label>個数 × 金額</label>
@@ -312,15 +317,22 @@
       if (!eventName) return alert('イベント名を入力してください。');
       record.eventName = eventName;
     }
+    if (product === 'その他') {
+      const otherName = document.getElementById('inp-other-name').value.trim();
+      if (!otherName) return alert('商品名（詳細）を入力してください。');
+      record.otherName = otherName;
+    }
     try {
       await addDoc(colRef, record);
       document.getElementById('inp-product').value = '';
       document.getElementById('inp-count').value = '';
       document.getElementById('inp-event-name').value = '';
+      document.getElementById('inp-other-name').value = '';
       document.getElementById('inp-amount').value = '';
       document.getElementById('count-field').style.display = 'none';
       document.getElementById('event-name-field').style.display = 'none';
       document.getElementById('cola-preset-field').style.display = 'none';
+      document.getElementById('other-name-field').style.display = 'none';
       document.querySelectorAll('.cola-qty').forEach(i => i.value = '');
       showToast('追加しました！');
     } catch(e) {
@@ -342,12 +354,15 @@
     const showCount  = COUNT_PRODUCTS.includes(product);
     const showEvent  = product === 'Event';
     const showPreset = product === 'ColÄ';
+    const showOther  = product === 'その他';
     document.getElementById('count-field').style.display       = showCount  ? '' : 'none';
     document.getElementById('event-name-field').style.display  = showEvent  ? '' : 'none';
     document.getElementById('cola-preset-field').style.display = showPreset ? '' : 'none';
+    document.getElementById('other-name-field').style.display  = showOther  ? '' : 'none';
     if (!showCount)  document.getElementById('inp-count').value = '';
     if (!showEvent)  document.getElementById('inp-event-name').value = '';
     if (!showPreset) document.querySelectorAll('.cola-qty').forEach(i => i.value = '');
+    if (!showOther)  document.getElementById('inp-other-name').value = '';
     document.getElementById('inp-amount').value = '';
   };
 
@@ -404,6 +419,13 @@
         if (p === 'Event') {
           return recs.filter(r => r.product === 'Event').map(r => `<tr>
             <td style="padding:8px 12px;">Event: ${escHtml(r.eventName||'')}</td>
+            <td class="amount">—</td>
+            <td class="amount">¥${r.amount.toLocaleString()}</td>
+          </tr>`);
+        }
+        if (p === 'その他') {
+          return recs.filter(r => r.product === 'その他').map(r => `<tr>
+            <td style="padding:8px 12px;">その他: ${escHtml(r.otherName||'')}</td>
             <td class="amount">—</td>
             <td class="amount">¥${r.amount.toLocaleString()}</td>
           </tr>`);
@@ -498,7 +520,7 @@
       return;
     }
     tbody.innerHTML = sorted.map(r => {
-      const label = r.product==='Event'&&r.eventName ? `Event: ${escHtml(r.eventName)}` : escHtml(r.product);
+      const label = r.product==='Event'&&r.eventName ? `Event: ${escHtml(r.eventName)}` : r.product==='その他'&&r.otherName ? `その他: ${escHtml(r.otherName)}` : escHtml(r.product);
       return `<tr>
         <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;color:#94a3b8;">${r.date.replace('-','年')}月</td>
         <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;color:#94a3b8;">${label}</td>
