@@ -5,56 +5,62 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>売上管理ツール</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Hiragino Sans', 'Segoe UI', sans-serif; background: #f0f4f8; color: #333; min-height: 100vh; padding-bottom: 40px; }
-    header { background: #2563eb; color: white; padding: 14px 16px; font-size: 1.1rem; font-weight: bold; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
-    .container { padding: 12px; display: grid; gap: 12px; max-width: 640px; margin: 0 auto; }
-    .card { background: white; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
-    .card h2 { font-size: 0.95rem; margin-bottom: 14px; color: #1e40af; border-left: 4px solid #2563eb; padding-left: 10px; letter-spacing: 0.02em; }
-    .form-col { display: flex; flex-direction: column; gap: 12px; }
-    label { display: block; font-size: 0.82rem; color: #555; margin-bottom: 5px; font-weight: 500; }
+    body { font-family: 'Inter', 'Hiragino Sans', 'Segoe UI', sans-serif; background: #f1f5f9; color: #0f172a; min-height: 100vh; padding-bottom: 48px; }
+    header { background: linear-gradient(135deg, #312e81 0%, #4f46e5 100%); color: white; padding: 0 16px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 20px rgba(79,70,229,0.4); }
+    .header-title { font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
+    .container { padding: 14px; display: grid; gap: 14px; max-width: 640px; margin: 0 auto; }
+    .card { background: #fff; border-radius: 20px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 8px 24px rgba(0,0,0,0.06); border: 1px solid rgba(0,0,0,0.04); }
+    .card h2 { font-size: 0.72rem; font-weight: 700; margin-bottom: 16px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; }
+    .form-col { display: flex; flex-direction: column; gap: 14px; }
+    label { display: block; font-size: 0.72rem; color: #64748b; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
     input[type="month"], input[type="text"], input[type="number"], select {
-      width: 100%; padding: 13px 14px; border: 1.5px solid #cbd5e1; border-radius: 10px;
-      font-size: 1rem; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
-      -webkit-appearance: none; appearance: none; background: #fff; min-height: 50px;
+      width: 100%; padding: 14px 16px; border: 1.5px solid #e2e8f0; border-radius: 12px;
+      font-size: 1rem; outline: none; transition: all 0.2s; font-family: inherit;
+      -webkit-appearance: none; appearance: none; background: #f8fafc; color: #0f172a; min-height: 52px;
     }
-    input:focus, select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
-    button { border: none; border-radius: 10px; font-size: 1rem; cursor: pointer; transition: background 0.15s; -webkit-tap-highlight-color: transparent; }
-    .btn-add { background: #2563eb; color: white; width: 100%; padding: 15px; font-weight: bold; font-size: 1.05rem; margin-top: 4px; border-radius: 12px; }
-    .btn-add:active { background: #1d4ed8; }
-    .btn-delete { background: #fee2e2; color: #dc2626; padding: 7px 14px; font-size: 0.82rem; border-radius: 8px; }
-    .btn-delete:active { background: #fecaca; }
-    .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
-    .filter-row select { padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 0.92rem; width: auto; min-height: 44px; -webkit-appearance: none; }
+    input:focus, select:focus { border-color: #4f46e5; background: #fff; box-shadow: 0 0 0 4px rgba(79,70,229,0.08); }
+    button { border: none; font-family: inherit; cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+    .btn-add { background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); color: white; width: 100%; padding: 16px; font-weight: 700; font-size: 1rem; border-radius: 14px; letter-spacing: 0.01em; box-shadow: 0 4px 14px rgba(79,70,229,0.35); }
+    .btn-add:active { transform: scale(0.98); box-shadow: 0 2px 6px rgba(79,70,229,0.2); }
+    .btn-delete { background: #fff0f0; color: #ef4444; padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; font-weight: 600; border: 1px solid #fecaca; }
+    .btn-delete:active { background: #fee2e2; }
+    .filter-row { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+    .filter-row select { padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 0.9rem; width: auto; min-height: 44px; background: #f8fafc; -webkit-appearance: none; font-family: inherit; }
     table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-    thead th { background: #eff6ff; padding: 10px 10px; text-align: left; font-weight: 600; color: #1e40af; border-bottom: 2px solid #bfdbfe; }
-    td { padding: 10px 10px; border-bottom: 1px solid #e2e8f0; }
-    td.amount { text-align: right; font-weight: 600; color: #16a34a; }
-    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
-    .summary-item { background: #eff6ff; border-radius: 10px; padding: 12px 10px; text-align: center; }
-    .summary-item .s-label { font-size: 0.7rem; color: #64748b; margin-bottom: 4px; }
-    .summary-item .s-val { font-size: 1.15rem; font-weight: bold; color: #1e40af; }
-    .tab-row { display: flex; gap: 8px; margin-bottom: 14px; }
-    .tab-btn { padding: 10px 0; border-radius: 20px; border: 1.5px solid #2563eb; background: white; color: #2563eb; font-size: 0.9rem; flex: 1; }
-    .tab-btn.active { background: #2563eb; color: white; font-weight: bold; }
+    thead th { background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 700; color: #94a3b8; border-bottom: 1px solid #e2e8f0; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    td { padding: 12px; border-bottom: 1px solid #f1f5f9; }
+    td.amount { text-align: right; font-weight: 700; color: #10b981; }
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .summary-item { border-radius: 14px; padding: 14px 12px; text-align: center; background: #f8fafc; border: 1px solid #e2e8f0; }
+    .summary-item.main { grid-column: span 2; background: linear-gradient(135deg, #4f46e5, #6366f1); border: none; }
+    .summary-item.main .s-label { color: rgba(255,255,255,0.75); }
+    .summary-item.main .s-val { color: #fff; font-size: 1.75rem; }
+    .summary-item .s-label { font-size: 0.68rem; color: #94a3b8; margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .summary-item .s-val { font-size: 1.15rem; font-weight: 800; color: #1e293b; }
+    .tab-row { display: flex; gap: 0; margin-bottom: 16px; background: #f1f5f9; border-radius: 12px; padding: 4px; }
+    .tab-btn { padding: 9px 0; border-radius: 9px; border: none; background: transparent; color: #64748b; font-size: 0.88rem; flex: 1; font-weight: 600; font-family: inherit; transition: all 0.2s; }
+    .tab-btn.active { background: #fff; color: #4f46e5; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
     .chart-wrapper { position: relative; height: 220px; }
-    .toast { position: fixed; top: 68px; left: 50%; transform: translateX(-50%); background: #22c55e; color: white; padding: 10px 28px; border-radius: 24px; font-size: 0.95rem; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 999; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .toast { position: fixed; top: 66px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 10px 28px; border-radius: 100px; font-size: 0.9rem; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 999; white-space: nowrap; box-shadow: 0 4px 16px rgba(16,185,129,0.4); }
     .toast.show { opacity: 1; }
-    .loading { text-align: center; padding: 20px; color: #94a3b8; }
-    .cola-qty-row { display: flex; align-items: center; gap: 8px; }
-    .cola-qty-row input { width: 72px; min-height: 44px; flex-shrink: 0; }
-    .cola-qty-row span { font-size: 0.88rem; color: #555; }
+    .loading { text-align: center; padding: 32px; color: #94a3b8; font-size: 0.9rem; }
+    .cola-qty-row { display: flex; align-items: center; gap: 10px; }
+    .cola-qty-row input { width: 76px; min-height: 48px; flex-shrink: 0; text-align: center; }
+    .cola-qty-row span { font-size: 0.88rem; color: #64748b; font-weight: 500; }
     @media (min-width: 640px) {
-      .container { padding: 20px; gap: 20px; }
-      .card { padding: 24px; }
+      .container { padding: 24px; gap: 20px; }
+      .card { padding: 28px; }
     }
   </style>
 </head>
 <body>
-<header style="display:flex;align-items:center;justify-content:space-between;">
-  <span>📊 売上管理ツール</span>
-  <button id="logout-btn" style="display:none;background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);padding:6px 14px;border-radius:20px;font-size:0.8rem;cursor:pointer;">ログアウト</button>
+<header>
+  <span class="header-title">📊 売上管理ツール</span>
+  <button id="logout-btn" style="display:none;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);padding:6px 14px;border-radius:20px;font-size:0.78rem;font-weight:600;cursor:pointer;letter-spacing:0.02em;">ログアウト</button>
 </header>
 <div class="container">
   <div class="card">
@@ -165,28 +171,16 @@
 <div class="toast" id="toast"></div>
 
 <!-- ========== ログイン画面 ========== -->
-<div id="auth-overlay" style="
-  display:none;
-  position:fixed;inset:0;
-  background:rgba(0,0,0,0.6);
-  z-index:9999;
-  align-items:center;
-  justify-content:center;
-">
-  <div style="
-    background:#fff;border-radius:12px;
-    padding:40px;text-align:center;
-    box-shadow:0 8px 32px rgba(0,0,0,0.2);
-    max-width:360px;width:90%;
-  ">
-    <h2 style="margin:0 0 8px;font-size:22px;">売上管理ツール</h2>
-    <p style="color:#666;margin:0 0 24px;font-size:14px;">Googleアカウントでログインしてください</p>
-    <button id="login-btn" style="
-      background:#4285F4;color:#fff;border:none;
-      padding:12px 24px;border-radius:8px;
-      font-size:16px;cursor:pointer;width:100%;
-    ">Googleでログイン</button>
-    <p id="auth-error" style="color:red;font-size:12px;margin:12px 0 0;display:none;"></p>
+<div id="auth-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:24px;padding:40px 32px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,0.2);max-width:340px;width:90%;">
+    <div style="width:60px;height:60px;background:linear-gradient(135deg,#4f46e5,#6366f1);border-radius:18px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;box-shadow:0 8px 20px rgba(79,70,229,0.35);">📊</div>
+    <h2 style="margin:0 0 8px;font-size:1.3rem;font-weight:800;color:#0f172a;letter-spacing:-0.02em;">売上管理ツール</h2>
+    <p style="color:#64748b;margin:0 0 28px;font-size:0.88rem;">Googleアカウントでログインしてください</p>
+    <button id="login-btn" style="background:#fff;color:#3c4043;border:1.5px solid #dadce0;padding:13px 20px;border-radius:12px;font-size:0.95rem;cursor:pointer;width:100%;font-weight:600;display:flex;align-items:center;justify-content:center;gap:10px;font-family:inherit;">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Googleでログイン
+    </button>
+    <p id="auth-error" style="color:#ef4444;font-size:0.82rem;margin:14px 0 0;display:none;"></p>
   </div>
 </div>
 
@@ -463,11 +457,11 @@
     const cafeTotal= m.filter(r=>r.product==='Cafe').reduce((s,r)=>s+r.amount,0);
     const colaTotal= m.filter(r=>r.product==='ColÄ').reduce((s,r)=>s+r.amount,0);
     document.getElementById('summary-grid').innerHTML = `
-      <div class="summary-item"><div class="s-label">今月の売上</div><div class="s-val">¥${total.toLocaleString()}</div></div>
-      <div class="summary-item"><div class="s-label">VIEsauna 今月件数</div><div class="s-val">${vieCount} 件</div></div>
-      <div class="summary-item"><div class="s-label">テントサウナ 今月件数</div><div class="s-val">${tentCount} 件</div></div>
-      <div class="summary-item"><div class="s-label">Cafe 今月売上</div><div class="s-val">¥${cafeTotal.toLocaleString()}</div></div>
-      <div class="summary-item"><div class="s-label">ColÄ 今月売上</div><div class="s-val">¥${colaTotal.toLocaleString()}</div></div>`;
+      <div class="summary-item main"><div class="s-label">今月の売上合計</div><div class="s-val">¥${total.toLocaleString()}</div></div>
+      <div class="summary-item"><div class="s-label">VIEsauna</div><div class="s-val">${vieCount} 件</div></div>
+      <div class="summary-item"><div class="s-label">テントサウナ</div><div class="s-val">${tentCount} 件</div></div>
+      <div class="summary-item"><div class="s-label">Cafe 売上</div><div class="s-val">¥${cafeTotal.toLocaleString()}</div></div>
+      <div class="summary-item"><div class="s-label">ColÄ 売上</div><div class="s-val">¥${colaTotal.toLocaleString()}</div></div>`;
   }
 
   window.switchChart = function(type, btn) {
