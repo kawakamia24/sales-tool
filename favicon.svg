@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d4f6e"/>
+      <stop offset="100%" stop-color="#0ea5a0"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.95)"/>
+      <stop offset="100%" stop-color="rgba(200,235,245,0.75)"/>
+    </linearGradient>
+  </defs>
+  <!-- Background rounded square -->
+  <rect width="100" height="100" rx="22" fill="url(#bg)"/>
+  <!-- Grid lines (subtle) -->
+  <line x1="18" y1="50" x2="82" y2="50" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+  <line x1="18" y1="70" x2="82" y2="70" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+  <line x1="40" y1="22" x2="40" y2="78" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+  <!-- Bar 1 -->
+  <rect x="20" y="62" width="13" height="16" rx="2" fill="url(#bar)"/>
+  <!-- Bar 2 -->
+  <rect x="38" y="50" width="13" height="28" rx="2" fill="url(#bar)"/>
+  <!-- Bar 3 -->
+  <rect x="56" y="34" width="13" height="44" rx="2" fill="url(#bar)"/>
+  <!-- Line graph -->
+  <polyline points="26,60 44,46 69,26" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Dots -->
+  <circle cx="26" cy="60" r="3.5" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2.2"/>
+  <circle cx="44" cy="46" r="3.5" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2.2"/>
+  <circle cx="69" cy="26" r="3.5" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="2.2"/>
+</svg>
