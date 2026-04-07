@@ -52,7 +52,10 @@
   </style>
 </head>
 <body>
-<header>📊 売上管理ツール</header>
+<header style="display:flex;align-items:center;justify-content:space-between;">
+  <span>📊 売上管理ツール</span>
+  <button id="logout-btn" style="display:none;background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);padding:6px 14px;border-radius:20px;font-size:0.8rem;cursor:pointer;">ログアウト</button>
+</header>
 <div class="container">
   <div class="card">
     <h2>売上データを追加</h2>
@@ -187,22 +190,6 @@
   </div>
 </div>
 
-<div id="user-bar" style="
-  display:none;
-  position:fixed;top:12px;right:16px;
-  background:#fff;border:1px solid #ddd;
-  border-radius:8px;padding:8px 14px;
-  font-size:13px;color:#333;
-  box-shadow:0 2px 8px rgba(0,0,0,0.1);
-  z-index:9998;align-items:center;gap:10px;
-">
-  <span id="user-email"></span>
-  <button id="logout-btn" style="
-    background:#f1f3f4;border:none;
-    padding:4px 10px;border-radius:6px;
-    cursor:pointer;font-size:12px;
-  ">ログアウト</button>
-</div>
 
 <!-- ========== メインスクリプト（認証 + Firestore を1つにまとめた） ========== -->
 <script type="module">
@@ -242,16 +229,14 @@
   // ============================================================
   // 認証まわり
   // ============================================================
-  const overlay   = document.getElementById("auth-overlay");
-  const userBar   = document.getElementById("user-bar");
-  const userEmail = document.getElementById("user-email");
-  const authError = document.getElementById("auth-error");
+  const overlay    = document.getElementById("auth-overlay");
+  const logoutBtn  = document.getElementById("logout-btn");
+  const authError  = document.getElementById("auth-error");
 
   onAuthStateChanged(auth, (user) => {
     if (user && ALLOWED_EMAILS.includes(user.email)) {
       overlay.style.display = "none";
-      userBar.style.display = "flex";
-      userEmail.textContent = user.email;
+      logoutBtn.style.display = "block";
     } else if (user) {
       authError.textContent = "このアカウントは許可されていません: " + user.email;
       authError.style.display = "block";
@@ -259,7 +244,7 @@
       signOut(auth);
     } else {
       overlay.style.display = "flex";
-      userBar.style.display = "none";
+      logoutBtn.style.display = "none";
     }
   });
 
