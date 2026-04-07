@@ -768,5 +768,27 @@
   // --- 初期描画 ---
   refresh();
 </script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBsr5A0f9JtgWwNznobQ8HLjBLnUj_Or-o",
+    authDomain: "sales-tool-a195b.firebaseapp.com",
+    projectId: "sales-tool-a195b",
+    storageBucket: "sales-tool-a195b.firebasestorage.app",
+    messagingSenderId: "913717004657",
+    appId: "1:913717004657:web:61804ac5db9217e9e60ed0"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  window.db = getFirestore(app);
+  window.firestoreCollection = collection(window.db, "sales");
+  window.addDoc = addDoc;
+  window.getDocs = getDocs;
+  window.deleteDoc = deleteDoc;
+  window.firestoreDoc = doc;
+  console.log("Firebase接続完了！");
+</script>
 </body>
 </html>
