@@ -7,39 +7,48 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', 'Hiragino Sans', sans-serif; background: #f0f4f8; color: #333; min-height: 100vh; }
-    header { background: #2563eb; color: white; padding: 18px 24px; font-size: 1.3rem; font-weight: bold; letter-spacing: 0.05em; }
-    .container { max-width: 960px; margin: 24px auto; padding: 0 16px; display: grid; gap: 24px; }
-    .card { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-    .card h2 { font-size: 1.05rem; margin-bottom: 16px; color: #1e40af; border-left: 4px solid #2563eb; padding-left: 10px; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 10px; align-items: end; }
-    label { display: block; font-size: 0.82rem; color: #555; margin-bottom: 4px; }
-    input[type="month"], input[type="text"], input[type="number"], select { width: 100%; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.95rem; outline: none; transition: border-color 0.2s; }
-    input:focus, select:focus { border-color: #2563eb; }
-    button { padding: 9px 22px; border: none; border-radius: 8px; font-size: 0.95rem; cursor: pointer; transition: background 0.2s; }
-    .btn-add { background: #2563eb; color: white; white-space: nowrap; }
-    .btn-add:hover { background: #1d4ed8; }
-    .btn-delete { background: #fee2e2; color: #dc2626; padding: 5px 12px; font-size: 0.82rem; }
-    .btn-delete:hover { background: #fecaca; }
-    .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
-    .filter-row select { padding: 7px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.88rem; width: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
-    thead th { background: #eff6ff; padding: 10px 12px; text-align: left; font-weight: 600; color: #1e40af; border-bottom: 2px solid #bfdbfe; }
-    tbody tr:hover { background: #f8faff; }
-    td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
+    body { font-family: 'Hiragino Sans', 'Segoe UI', sans-serif; background: #f0f4f8; color: #333; min-height: 100vh; padding-bottom: 40px; }
+    header { background: #2563eb; color: white; padding: 14px 16px; font-size: 1.1rem; font-weight: bold; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+    .container { padding: 12px; display: grid; gap: 12px; max-width: 640px; margin: 0 auto; }
+    .card { background: white; border-radius: 14px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+    .card h2 { font-size: 0.95rem; margin-bottom: 14px; color: #1e40af; border-left: 4px solid #2563eb; padding-left: 10px; letter-spacing: 0.02em; }
+    .form-col { display: flex; flex-direction: column; gap: 12px; }
+    label { display: block; font-size: 0.82rem; color: #555; margin-bottom: 5px; font-weight: 500; }
+    input[type="month"], input[type="text"], input[type="number"], select {
+      width: 100%; padding: 13px 14px; border: 1.5px solid #cbd5e1; border-radius: 10px;
+      font-size: 1rem; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+      -webkit-appearance: none; appearance: none; background: #fff; min-height: 50px;
+    }
+    input:focus, select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+    button { border: none; border-radius: 10px; font-size: 1rem; cursor: pointer; transition: background 0.15s; -webkit-tap-highlight-color: transparent; }
+    .btn-add { background: #2563eb; color: white; width: 100%; padding: 15px; font-weight: bold; font-size: 1.05rem; margin-top: 4px; border-radius: 12px; }
+    .btn-add:active { background: #1d4ed8; }
+    .btn-delete { background: #fee2e2; color: #dc2626; padding: 7px 14px; font-size: 0.82rem; border-radius: 8px; }
+    .btn-delete:active { background: #fecaca; }
+    .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .filter-row select { padding: 10px 12px; border: 1.5px solid #cbd5e1; border-radius: 10px; font-size: 0.92rem; width: auto; min-height: 44px; -webkit-appearance: none; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    thead th { background: #eff6ff; padding: 10px 10px; text-align: left; font-weight: 600; color: #1e40af; border-bottom: 2px solid #bfdbfe; }
+    td { padding: 10px 10px; border-bottom: 1px solid #e2e8f0; }
     td.amount { text-align: right; font-weight: 600; color: #16a34a; }
-    .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 20px; }
-    .summary-item { background: #eff6ff; border-radius: 10px; padding: 14px 16px; text-align: center; }
-    .summary-item .s-label { font-size: 0.78rem; color: #64748b; margin-bottom: 4px; }
-    .summary-item .s-val { font-size: 1.25rem; font-weight: bold; color: #1e40af; }
-    .tab-row { display: flex; gap: 8px; margin-bottom: 16px; }
-    .tab-btn { padding: 6px 18px; border-radius: 20px; border: 1px solid #2563eb; background: white; color: #2563eb; font-size: 0.88rem; }
-    .tab-btn.active { background: #2563eb; color: white; }
-    .chart-wrapper { position: relative; height: 280px; }
-    .toast { position: fixed; bottom: 24px; right: 24px; background: #22c55e; color: white; padding: 10px 20px; border-radius: 8px; font-size: 0.9rem; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 999; }
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+    .summary-item { background: #eff6ff; border-radius: 10px; padding: 12px 10px; text-align: center; }
+    .summary-item .s-label { font-size: 0.7rem; color: #64748b; margin-bottom: 4px; }
+    .summary-item .s-val { font-size: 1.15rem; font-weight: bold; color: #1e40af; }
+    .tab-row { display: flex; gap: 8px; margin-bottom: 14px; }
+    .tab-btn { padding: 10px 0; border-radius: 20px; border: 1.5px solid #2563eb; background: white; color: #2563eb; font-size: 0.9rem; flex: 1; }
+    .tab-btn.active { background: #2563eb; color: white; font-weight: bold; }
+    .chart-wrapper { position: relative; height: 220px; }
+    .toast { position: fixed; top: 68px; left: 50%; transform: translateX(-50%); background: #22c55e; color: white; padding: 10px 28px; border-radius: 24px; font-size: 0.95rem; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 999; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     .toast.show { opacity: 1; }
     .loading { text-align: center; padding: 20px; color: #94a3b8; }
-    @media (max-width: 640px) { .form-row { grid-template-columns: 1fr 1fr; } .form-row .btn-add { grid-column: span 2; } }
+    .cola-qty-row { display: flex; align-items: center; gap: 8px; }
+    .cola-qty-row input { width: 72px; min-height: 44px; flex-shrink: 0; }
+    .cola-qty-row span { font-size: 0.88rem; color: #555; }
+    @media (min-width: 640px) {
+      .container { padding: 20px; gap: 20px; }
+      .card { padding: 24px; }
+    }
   </style>
 </head>
 <body>
@@ -47,7 +56,7 @@
 <div class="container">
   <div class="card">
     <h2>売上データを追加</h2>
-    <div class="form-row">
+    <div class="form-col">
       <div>
         <label>月</label>
         <input type="month" id="inp-date">
@@ -82,18 +91,18 @@
       </div>
       <div id="cola-preset-field" style="display:none">
         <label>個数 × 金額</label>
-        <div style="display:flex;flex-direction:column;gap:6px;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <input type="number" class="cola-qty" data-price="2500" placeholder="0" min="0" style="width:60px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.9rem;" oninput="calcColaAmount()">
-            <span style="font-size:0.88rem;color:#555;">個 × ¥2,500</span>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="cola-qty-row">
+            <input type="number" class="cola-qty" data-price="2500" placeholder="0" min="0" oninput="calcColaAmount()">
+            <span>個 × ¥2,500</span>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <input type="number" class="cola-qty" data-price="2000" placeholder="0" min="0" style="width:60px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.9rem;" oninput="calcColaAmount()">
-            <span style="font-size:0.88rem;color:#555;">個 × ¥2,000</span>
+          <div class="cola-qty-row">
+            <input type="number" class="cola-qty" data-price="2000" placeholder="0" min="0" oninput="calcColaAmount()">
+            <span>個 × ¥2,000</span>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <input type="number" class="cola-qty" data-price="1500" placeholder="0" min="0" style="width:60px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.9rem;" oninput="calcColaAmount()">
-            <span style="font-size:0.88rem;color:#555;">個 × ¥1,500</span>
+          <div class="cola-qty-row">
+            <input type="number" class="cola-qty" data-price="1500" placeholder="0" min="0" oninput="calcColaAmount()">
+            <span>個 × ¥1,500</span>
           </div>
         </div>
       </div>
