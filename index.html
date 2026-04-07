@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>売上管理ツール</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', 'Hiragino Sans', sans-serif;
+      background: #f0f4f8;
+      color: #333;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #2563eb;
+      color: white;
+      padding: 18px 24px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      letter-spacing: 0.05em;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 24px auto;
+      padding: 0 16px;
+      display: grid;
+      gap: 24px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .card h2 {
+      font-size: 1.05rem;
+      margin-bottom: 16px;
+      color: #1e40af;
+      border-left: 4px solid #2563eb;
+      padding-left: 10px;
+    }
+
+    /* フォーム */
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    label {
+      display: block;
+      font-size: 0.82rem;
+      color: #555;
+      margin-bottom: 4px;
+    }
+
+    input[type="month"],
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus { border-color: #2563eb; }
+
+    button {
+      padding: 9px 22px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-add {
+      background: #2563eb;
+      color: white;
+      white-space: nowrap;
+    }
+    .btn-add:hover { background: #1d4ed8; }
+
+    .btn-delete {
+      background: #fee2e2;
+      color: #dc2626;
+      padding: 5px 12px;
+      font-size: 0.82rem;
+    }
+    .btn-delete:hover { background: #fecaca; }
+
+    .btn-preset {
+      background: #f1f5f9;
+      color: #334155;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+    }
+    .btn-preset:hover { background: #e2e8f0; }
+    .btn-preset.selected { background: #2563eb; color: white; border-color: #2563eb; }
+
+    /* フィルター */
+    .filter-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .filter-row select,
+    .filter-row input[type="text"] {
+      padding: 7px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      outline: none;
+    }
+
+    .filter-row select:focus,
+    .filter-row input[type="text"]:focus { border-color: #2563eb; }
+
+    /* テーブル */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+
+    thead th {
+      background: #eff6ff;
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 600;
+      color: #1e40af;
+      border-bottom: 2px solid #bfdbfe;
+    }
+
+    tbody tr:hover { background: #f8faff; }
+
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    td.amount { text-align: right; font-weight: 600; color: #16a34a; }
+
+    .empty-msg {
+      text-align: center;
+      padding: 28px;
+      color: #94a3b8;
+      font-size: 0.9rem;
+    }
+
+    /* 合計 */
+    .total-row {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
+      margin-top: 12px;
+      font-size: 0.95rem;
+      color: #334155;
+    }
+
+    .total-row span.total-amt {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #2563eb;
+    }
+
+    /* グラフ切り替え */
+    .tab-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .tab-btn {
+      padding: 6px 18px;
+      border-radius: 20px;
+      border: 1px solid #2563eb;
+      background: white;
+      color: #2563eb;
+      font-size: 0.88rem;
+    }
+
+    .tab-btn.active {
+      background: #2563eb;
+      color: white;
+    }
+
+    .chart-wrapper { position: relative; height: 280px; }
+
+    /* サマリーカード */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .summary-item {
+      background: #eff6ff;
+      border-radius: 10px;
+      padding: 14px 16px;
+      text-align: center;
+    }
+
+    .summary-item .s-label {
+      font-size: 0.78rem;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+
+    .summary-item .s-val {
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: #1e40af;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #22c55e;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+      z-index: 999;
+    }
+
+    .toast.show { opacity: 1; }
+
+    @media (max-width: 640px) {
+      .form-row { grid-template-columns: 1fr 1fr; }
+      .form-row .btn-add { grid-column: span 2; }
+    }
+  </style>
+</head>
+<body>
+
+<header>📊 売上管理ツール</header>
+
+<div class="container">
+
+  <!-- 入力フォーム -->
+  <div class="card">
+    <h2>売上データを追加</h2>
+    <div class="form-row">
+      <div>
+        <label>月</label>
+        <input type="month" id="inp-date">
+      </div>
+      <div>
+        <label>商品名</label>
+        <select id="inp-product">
+          <option value="">選択してください</option>
+          <option value="VIEsauna">VIEsauna</option>
+          <option value="テントサウナ">テントサウナ</option>
+          <option value="Cafe">Cafe</option>
+          <optgroup label="Public">
+            <option value="Public-sauna">sauna</option>
+            <option value="Public-cafe">cafe</option>
+          </optgroup>
+          <option value="Event">Event</option>
+          <option value="ColÄ">ColÄ</option>
+        </select>
+      </div>
+      <div id="count-field" style="display:none">
+        <label>件数</label>
+        <input type="number" id="inp-count" placeholder="例: 3" min="1">
+      </div>
+      <div id="event-name-field" style="display:none">
+        <label>イベント名</label>
+        <input type="text" id="inp-event-name" placeholder="例: 〇〇フェス">
+      </div>
+      <div id="cola-preset-field" style="display:none">
+        <label>個数 × 金額</label>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="number" class="cola-qty" data-price="2500" placeholder="0" min="0" style="width:60px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.9rem;" oninput="calcColaAmount()">
+            <span style="font-size:0.88rem;color:#555;">個 × ¥2,500</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="number" class="cola-qty" data-price="2000" placeholder="0" min="0" style="width:60px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.9rem;" oninput="calcColaAmount()">
+            <span style="font-size:0.88rem;color:#555;">個 × ¥2,000</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="number" class="cola-qty" data-price="1500" placeholder="0" min="0" style="width:60px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:0.9rem;" oninput="calcColaAmount()">
+            <span style="font-size:0.88rem;color:#555;">個 × ¥1,500</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <label>金額（円）</label>
+        <input type="number" id="inp-amount" placeholder="例: 50000" min="0">
+      </div>
+      <button class="btn-add" onclick="addRecord()">追加</button>
+    </div>
+  </div>
+
+  <!-- 今月の進捗 -->
+  <div class="card">
+    <h2>今月の進捗</h2>
+    <div class="summary-grid" id="summary-grid"></div>
+  </div>
+
+  <!-- 一覧 -->
+  <div class="card">
+    <h2>売上一覧</h2>
+
+    <div class="filter-row">
+      <div>
+        <label style="display:inline;margin-right:6px;">月絞り込み:</label>
+        <select id="filter-month" onchange="renderTable()">
+          <option value="">すべて</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="list-area"></div>
+  </div>
+
+  <!-- グラフ -->
+  <div class="card">
+    <h2>売上グラフ</h2>
+
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="switchChart('month', this)">月別推移</button>
+      <button class="tab-btn" onclick="switchChart('product', this)">商品別</button>
+    </div>
+
+    <div class="chart-wrapper">
+      <canvas id="salesChart"></canvas>
+    </div>
+  </div>
+
+  <!-- 追加履歴 -->
+  <div class="card" style="opacity:0.7;">
+    <details>
+      <summary style="cursor:pointer;font-size:0.85rem;color:#94a3b8;user-select:none;">追加履歴</summary>
+      <div style="margin-top:12px;">
+        <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:7px 10px;background:#f8fafc;color:#94a3b8;font-weight:500;border-bottom:1px solid #e2e8f0;">月</th>
+              <th style="text-align:left;padding:7px 10px;background:#f8fafc;color:#94a3b8;font-weight:500;border-bottom:1px solid #e2e8f0;">商品名</th>
+              <th style="text-align:right;padding:7px 10px;background:#f8fafc;color:#94a3b8;font-weight:500;border-bottom:1px solid #e2e8f0;">件数</th>
+              <th style="text-align:right;padding:7px 10px;background:#f8fafc;color:#94a3b8;font-weight:500;border-bottom:1px solid #e2e8f0;">金額</th>
+              <th style="text-align:center;padding:7px 10px;background:#f8fafc;color:#94a3b8;font-weight:500;border-bottom:1px solid #e2e8f0;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // --- データ管理 ---
+  const STORAGE_KEY = 'sales_records_v1';
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch { return []; }
+  }
+
+  function save(records) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  }
+
+  let records = load();
+
+  // --- 件数フィールドの表示切替 & 単価自動計算 ---
+  const COUNT_PRODUCTS = ['VIEsauna', 'テントサウナ', 'Public-sauna'];
+  const UNIT_PRICES = { 'VIEsauna': 20000, 'テントサウナ': 15000, 'Public-sauna': 3000 };
+  const PRODUCT_ORDER = ['VIEsauna', 'テントサウナ', 'Cafe', 'Public-sauna', 'Public-cafe', 'Event', 'ColÄ'];
+  const sortByOrder = (a, b) => {
+    const ai = PRODUCT_ORDER.indexOf(a), bi = PRODUCT_ORDER.indexOf(b);
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+  };
+
+  function updateCountAndAmount() {
+    const product = document.getElementById('inp-product').value;
+    const showCount  = COUNT_PRODUCTS.includes(product);
+    const showEvent  = product === 'Event';
+    const showPreset = product === 'ColÄ';
+    document.getElementById('count-field').style.display        = showCount  ? '' : 'none';
+    document.getElementById('event-name-field').style.display   = showEvent  ? '' : 'none';
+    document.getElementById('cola-preset-field').style.display  = showPreset ? '' : 'none';
+    if (!showCount)  document.getElementById('inp-count').value = '';
+    if (!showEvent)  document.getElementById('inp-event-name').value = '';
+    if (!showPreset) document.querySelectorAll('.cola-qty').forEach(i => i.value = '');
+    document.getElementById('inp-amount').value = '';
+  }
+
+  function calcColaAmount() {
+    let total = 0;
+    document.querySelectorAll('.cola-qty').forEach(i => {
+      const qty = parseInt(i.value, 10) || 0;
+      total += qty * parseInt(i.dataset.price, 10);
+    });
+    document.getElementById('inp-amount').value = total > 0 ? total : '';
+  }
+
+  function calcAmount() {
+    const product = document.getElementById('inp-product').value;
+    const count   = parseInt(document.getElementById('inp-count').value, 10);
+    if (UNIT_PRICES[product] && count > 0) {
+      document.getElementById('inp-amount').value = UNIT_PRICES[product] * count;
+    } else {
+      document.getElementById('inp-amount').value = '';
+    }
+  }
+
+  document.getElementById('inp-product').addEventListener('change', updateCountAndAmount);
+  document.getElementById('inp-count').addEventListener('input', calcAmount);
+
+  // --- 追加 ---
+  function addRecord() {
+    const date    = document.getElementById('inp-date').value;
+    const product = document.getElementById('inp-product').value;
+    const amount  = parseInt(document.getElementById('inp-amount').value, 10);
+
+    if (!date)            return alert('月を選択してください。');
+    if (!product)         return alert('商品名を選択してください。');
+    if (!amount || amount <= 0) return alert('正しい金額を入力してください。');
+
+    const record = { id: Date.now(), date, product, amount };
+
+    if (COUNT_PRODUCTS.includes(product)) {
+      const count = parseInt(document.getElementById('inp-count').value, 10);
+      if (!count || count <= 0) return alert('件数を入力してください。');
+      record.count = count;
+    }
+
+    if (product === 'Event') {
+      const eventName = document.getElementById('inp-event-name').value.trim();
+      if (!eventName) return alert('イベント名を入力してください。');
+      record.eventName = eventName;
+    }
+
+    records.push(record);
+    save(records);
+    document.getElementById('inp-product').value    = '';
+    document.getElementById('inp-count').value      = '';
+    document.getElementById('inp-event-name').value = '';
+    document.getElementById('inp-amount').value     = '';
+    document.getElementById('count-field').style.display       = 'none';
+    document.getElementById('event-name-field').style.display  = 'none';
+    document.getElementById('cola-preset-field').style.display = 'none';
+    document.querySelectorAll('.cola-qty').forEach(i => i.value = '');
+    refresh();
+    showToast('追加しました！');
+  }
+
+  // --- 削除 ---
+  function deleteRecord(id) {
+    records = records.filter(r => r.id !== id);
+    save(records);
+    refresh();
+    showToast('削除しました。');
+  }
+
+  // --- 月リスト生成 ---
+  function getMonths() {
+    const months = [...new Set(records.map(r => r.date.slice(0,7)))].sort();
+    return months;
+  }
+
+  // --- フィルター用月セレクト更新 ---
+  function updateMonthFilter() {
+    const sel = document.getElementById('filter-month');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">すべて</option>';
+    getMonths().forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m.replace('-', '年') + '月';
+      if (m === cur) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  }
+
+  // --- 一覧描画（月別×商品別集計） ---
+  function renderTable() {
+    const filterMonth = document.getElementById('filter-month').value;
+    const area = document.getElementById('list-area');
+
+    let filtered = records.filter(r =>
+      !filterMonth || r.date.startsWith(filterMonth)
+    );
+
+    if (filtered.length === 0) {
+      area.innerHTML = '<p style="text-align:center;padding:28px;color:#94a3b8;font-size:0.9rem;">データがありません</p>';
+      return;
+    }
+
+    const months = [...new Set(filtered.map(r => r.date))].sort().reverse();
+
+    const thStyle = 'text-align:left;padding:8px 12px;background:#eff6ff;color:#1e40af;font-weight:600;border-bottom:2px solid #bfdbfe;';
+    const thRStyle = thStyle + 'text-align:right;';
+
+    area.innerHTML = months.map(month => {
+      const recs = filtered.filter(r => r.date === month);
+      const products = [...new Set(recs.map(r => r.product))].sort(sortByOrder);
+      const bodyRows = products.flatMap(p => {
+        if (p === 'Event') {
+          // イベント名ごとに個別行
+          return recs.filter(r => r.product === 'Event').map(r => `<tr>
+            <td style="padding:8px 12px;">Event: ${escHtml(r.eventName || '')}</td>
+            <td class="amount">—</td>
+            <td class="amount">¥${r.amount.toLocaleString()}</td>
+          </tr>`);
+        }
+        const precs  = recs.filter(r => r.product === p);
+        const count  = precs.reduce((s, r) => s + (r.count || 0), 0);
+        const amount = precs.reduce((s, r) => s + r.amount, 0);
+        return [`<tr>
+          <td style="padding:8px 12px;">${escHtml(p)}</td>
+          <td class="amount">${count > 0 ? count + ' 件' : '—'}</td>
+          <td class="amount">¥${amount.toLocaleString()}</td>
+        </tr>`];
+      }).join('');
+      const totalCount  = recs.reduce((s, r) => s + (r.count || 0), 0);
+      const totalAmount = recs.reduce((s, r) => s + r.amount, 0);
+      return `
+        <div style="margin-bottom:20px;">
+          <div style="font-weight:600;color:#1e40af;margin-bottom:8px;">${month.replace('-','年')}月</div>
+          <table style="width:100%;border-collapse:collapse;font-size:0.92rem;">
+            <thead><tr>
+              <th style="${thStyle}">商品名</th>
+              <th style="${thRStyle}">件数</th>
+              <th style="${thRStyle}">金額</th>
+            </tr></thead>
+            <tbody>${bodyRows}</tbody>
+            <tfoot><tr style="font-weight:bold;border-top:2px solid #bfdbfe;">
+              <td style="padding:8px 12px;">合計</td>
+              <td class="amount">${totalCount > 0 ? totalCount + ' 件' : '—'}</td>
+              <td class="amount">¥${totalAmount.toLocaleString()}</td>
+            </tr></tfoot>
+          </table>
+        </div>`;
+    }).join('');
+  }
+
+  // --- サマリー ---
+  function renderSummary() {
+    const thisMonth = new Date().toISOString().slice(0,7);
+    const thisMonthRecords = records.filter(r => r.date === thisMonth);
+
+    const thisMonthTotal = thisMonthRecords.reduce((s, r) => s + r.amount, 0);
+    const vieCount  = thisMonthRecords.filter(r => r.product === 'VIEsauna').reduce((s, r) => s + (r.count || 0), 0);
+    const tentCount = thisMonthRecords.filter(r => r.product === 'テントサウナ').reduce((s, r) => s + (r.count || 0), 0);
+    const cafeTotal = thisMonthRecords.filter(r => r.product === 'Cafe').reduce((s, r) => s + r.amount, 0);
+    const colaTotal = thisMonthRecords.filter(r => r.product === 'ColÄ').reduce((s, r) => s + r.amount, 0);
+
+    document.getElementById('summary-grid').innerHTML = `
+      <div class="summary-item">
+        <div class="s-label">今月の売上</div>
+        <div class="s-val">¥${thisMonthTotal.toLocaleString()}</div>
+      </div>
+      <div class="summary-item">
+        <div class="s-label">VIEsauna 今月件数</div>
+        <div class="s-val">${vieCount} 件</div>
+      </div>
+      <div class="summary-item">
+        <div class="s-label">テントサウナ 今月件数</div>
+        <div class="s-val">${tentCount} 件</div>
+      </div>
+      <div class="summary-item">
+        <div class="s-label">Cafe 今月売上</div>
+        <div class="s-val">¥${cafeTotal.toLocaleString()}</div>
+      </div>
+      <div class="summary-item">
+        <div class="s-label">ColÄ 今月売上</div>
+        <div class="s-val">¥${colaTotal.toLocaleString()}</div>
+      </div>
+    `;
+  }
+
+  // --- グラフ ---
+  let chartInstance = null;
+  let currentChartType = 'month';
+
+  const COLORS = [
+    '#2563eb','#16a34a','#dc2626','#d97706','#7c3aed',
+    '#0891b2','#be185d','#65a30d','#ea580c','#6366f1'
+  ];
+
+  function switchChart(type, btn) {
+    currentChartType = type;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderChart();
+  }
+
+  function renderChart() {
+    const ctx = document.getElementById('salesChart').getContext('2d');
+    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+    if (records.length === 0) return;
+
+    if (currentChartType === 'month') {
+      renderMonthChart(ctx);
+    } else {
+      renderProductChart(ctx);
+    }
+  }
+
+  function renderMonthChart(ctx) {
+    const months = getMonths();
+    const products = [...new Set(records.map(r => r.product))].sort();
+
+    // 商品ごとに月別集計
+    const datasets = products.map((product, i) => {
+      const data = months.map(month =>
+        records
+          .filter(r => r.product === product && r.date.startsWith(month))
+          .reduce((s, r) => s + r.amount, 0)
+      );
+      return {
+        label: product,
+        data,
+        backgroundColor: COLORS[i % COLORS.length] + '99',
+        borderColor: COLORS[i % COLORS.length],
+        borderWidth: 2,
+        tension: 0.3,
+        fill: false,
+      };
+    });
+
+    const labels = months.map(m => m.replace('-', '年') + '月');
+
+    chartInstance = new Chart(ctx, {
+      type: products.length <= 3 ? 'line' : 'bar',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 12 } } },
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.dataset.label}: ¥${ctx.raw.toLocaleString()}`
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: v => '¥' + v.toLocaleString()
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function renderProductChart(ctx) {
+    const products = [...new Set(records.map(r => r.product))].sort();
+    const data = products.map(p =>
+      records.filter(r => r.product === p).reduce((s, r) => s + r.amount, 0)
+    );
+
+    chartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: products,
+        datasets: [{
+          data,
+          backgroundColor: COLORS.slice(0, products.length),
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 12 } } },
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.label}: ¥${ctx.raw.toLocaleString()}`
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // --- ユーティリティ ---
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+  }
+
+  // --- 追加履歴描画 ---
+  function renderHistory() {
+    const tbody = document.getElementById('history-body');
+    const sorted = [...records].sort((a, b) => b.id - a.id);
+    if (sorted.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:16px;color:#cbd5e1;">履歴がありません</td></tr>';
+      return;
+    }
+    tbody.innerHTML = sorted.map(r => {
+      const label = r.product === 'Event' && r.eventName
+        ? `Event: ${escHtml(r.eventName)}`
+        : escHtml(r.product);
+      return `<tr>
+        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;color:#94a3b8;">${r.date.replace('-','年')}月</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;color:#94a3b8;">${label}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;color:#94a3b8;text-align:right;">${r.count != null ? r.count + ' 件' : '—'}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;color:#94a3b8;text-align:right;">¥${r.amount.toLocaleString()}</td>
+        <td style="padding:7px 10px;border-bottom:1px solid #f1f5f9;text-align:center;">
+          <button class="btn-delete" onclick="deleteRecord(${r.id})">削除</button>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // --- 全体更新 ---
+  function refresh() {
+    updateMonthFilter();
+    renderTable();
+    renderSummary();
+    renderChart();
+    renderHistory();
+  }
+
+  // --- 今月をデフォルト設定 ---
+  document.getElementById('inp-date').value = new Date().toISOString().slice(0,7);
+
+  // --- Enterキーで追加 ---
+  ['inp-date','inp-product','inp-amount'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') addRecord();
+    });
+  });
+
+  // --- 初期描画 ---
+  refresh();
+</script>
+</body>
+</html>
