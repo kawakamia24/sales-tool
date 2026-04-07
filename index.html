@@ -146,10 +146,59 @@
   </div>
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- ========== ログイン画面 ========== -->
+<div id="auth-overlay" style="
+  display:none;
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.6);
+  z-index:9999;
+  align-items:center;
+  justify-content:center;
+">
+  <div style="
+    background:#fff;border-radius:12px;
+    padding:40px;text-align:center;
+    box-shadow:0 8px 32px rgba(0,0,0,0.2);
+    max-width:360px;width:90%;
+  ">
+    <h2 style="margin:0 0 8px;font-size:22px;">売上管理ツール</h2>
+    <p style="color:#666;margin:0 0 24px;font-size:14px;">Googleアカウントでログインしてください</p>
+    <button id="login-btn" style="
+      background:#4285F4;color:#fff;border:none;
+      padding:12px 24px;border-radius:8px;
+      font-size:16px;cursor:pointer;width:100%;
+    ">Googleでログイン</button>
+    <p id="auth-error" style="color:red;font-size:12px;margin:12px 0 0;display:none;"></p>
+  </div>
+</div>
+
+<div id="user-bar" style="
+  display:none;
+  position:fixed;top:12px;right:16px;
+  background:#fff;border:1px solid #ddd;
+  border-radius:8px;padding:8px 14px;
+  font-size:13px;color:#333;
+  box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  z-index:9998;align-items:center;gap:10px;
+">
+  <span id="user-email"></span>
+  <button id="logout-btn" style="
+    background:#f1f3f4;border:none;
+    padding:4px 10px;border-radius:6px;
+    cursor:pointer;font-size:12px;
+  ">ログアウト</button>
+</div>
+
+<!-- ========== メインスクリプト（認証 + Firestore を1つにまとめた） ========== -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
+  // ============================================================
+  // Firebase 設定（1つだけ）
+  // ============================================================
   const firebaseConfig = {
     apiKey: "AIzaSyBsr5A0f9JtgWwNznobQ8HLjBLnUj_Or-o",
     authDomain: "sales-tool-a195b.firebaseapp.com",
@@ -159,11 +208,61 @@
     appId: "1:913717004657:web:61804ac5db9217e9e60ed0"
   };
 
+  // ============================================================
+  // ★ここを自分のGmailアドレスに変更してください★
+  // 複数許可したい場合は , で区切って追加できます
+  // ============================================================
+  const ALLOWED_EMAILS = [
+    "kawakami42a@gmail.com,vie.tokuji@gmail.com",
+  ];
+
+  // ============================================================
+  // Firebase 初期化（1回だけ）
+  // ============================================================
   const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+  const db  = getFirestore(app);
+  const auth = getAuth(app);
   const colRef = collection(db, "sales");
 
-  // --- 定数 ---
+  // ============================================================
+  // 認証まわり
+  // ============================================================
+  const overlay   = document.getElementById("auth-overlay");
+  const userBar   = document.getElementById("user-bar");
+  const userEmail = document.getElementById("user-email");
+  const authError = document.getElementById("auth-error");
+
+  onAuthStateChanged(auth, (user) => {
+    if (user && ALLOWED_EMAILS.includes(user.email)) {
+      overlay.style.display = "none";
+      userBar.style.display = "flex";
+      userEmail.textContent = user.email;
+    } else if (user) {
+      authError.textContent = "このアカウントは許可されていません: " + user.email;
+      authError.style.display = "block";
+      overlay.style.display = "flex";
+      signOut(auth);
+    } else {
+      overlay.style.display = "flex";
+      userBar.style.display = "none";
+    }
+  });
+
+  document.getElementById("login-btn").addEventListener("click", async () => {
+    authError.style.display = "none";
+    try {
+      await signInWithPopup(auth, new GoogleAuthProvider());
+    } catch (e) {
+      authError.textContent = "ログインに失敗しました。もう一度お試しください。";
+      authError.style.display = "block";
+    }
+  });
+
+  document.getElementById("logout-btn").addEventListener("click", () => signOut(auth));
+
+  // ============================================================
+  // 売上ロジック（元のコードそのまま）
+  // ============================================================
   const COUNT_PRODUCTS = ['VIEsauna', 'テントサウナ', 'Public-sauna'];
   const UNIT_PRICES = { 'VIEsauna': 20000, 'テントサウナ': 15000, 'Public-sauna': 3000 };
   const PRODUCT_ORDER = ['VIEsauna', 'テントサウナ', 'Cafe', 'Public-sauna', 'Public-cafe', 'Event', 'ColÄ'];
@@ -177,36 +276,29 @@
   let chartInstance = null;
   let currentChartType = 'month';
 
-  // --- Firestoreからリアルタイム取得 ---
   onSnapshot(colRef, (snapshot) => {
     records = snapshot.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
     refresh();
   });
 
-  // --- 追加 ---
   window.addRecord = async function() {
     const date    = document.getElementById('inp-date').value;
     const product = document.getElementById('inp-product').value;
     const amount  = parseInt(document.getElementById('inp-amount').value, 10);
-
     if (!date)   return alert('月を選択してください。');
     if (!product) return alert('商品名を選択してください。');
     if (!amount || amount <= 0) return alert('正しい金額を入力してください。');
-
     const record = { id: Date.now(), date, product, amount };
-
     if (COUNT_PRODUCTS.includes(product)) {
       const count = parseInt(document.getElementById('inp-count').value, 10);
       if (!count || count <= 0) return alert('件数を入力してください。');
       record.count = count;
     }
-
     if (product === 'Event') {
       const eventName = document.getElementById('inp-event-name').value.trim();
       if (!eventName) return alert('イベント名を入力してください。');
       record.eventName = eventName;
     }
-
     try {
       await addDoc(colRef, record);
       document.getElementById('inp-product').value = '';
@@ -223,7 +315,6 @@
     }
   };
 
-  // --- 削除 ---
   window.deleteRecord = async function(firestoreId) {
     try {
       await deleteDoc(doc(db, "sales", firestoreId));
@@ -233,7 +324,6 @@
     }
   };
 
-  // --- 件数フィールド切替 ---
   window.updateCountAndAmount = function() {
     const product = document.getElementById('inp-product').value;
     const showCount  = COUNT_PRODUCTS.includes(product);
@@ -266,12 +356,10 @@
     }
   };
 
-  // --- 月リスト ---
   function getMonths() {
     return [...new Set(records.map(r => r.date.slice(0,7)))].sort();
   }
 
-  // --- フィルター更新 ---
   function updateMonthFilter() {
     const sel = document.getElementById('filter-month');
     const cur = sel.value;
@@ -285,21 +373,17 @@
     });
   }
 
-  // --- 一覧描画 ---
   window.renderTable = function() {
     const filterMonth = document.getElementById('filter-month').value;
     const area = document.getElementById('list-area');
     const filtered = records.filter(r => !filterMonth || r.date.startsWith(filterMonth));
-
     if (filtered.length === 0) {
       area.innerHTML = '<p style="text-align:center;padding:28px;color:#94a3b8;font-size:0.9rem;">データがありません</p>';
       return;
     }
-
     const months = [...new Set(filtered.map(r => r.date))].sort().reverse();
     const thStyle = 'text-align:left;padding:8px 12px;background:#eff6ff;color:#1e40af;font-weight:600;border-bottom:2px solid #bfdbfe;';
     const thRStyle = thStyle + 'text-align:right;';
-
     area.innerHTML = months.map(month => {
       const recs = filtered.filter(r => r.date === month);
       const products = [...new Set(recs.map(r => r.product))].sort(sortByOrder);
@@ -320,10 +404,8 @@
           <td class="amount">¥${amount.toLocaleString()}</td>
         </tr>`];
       }).join('');
-
       const totalCount  = recs.reduce((s,r) => s+(r.count||0), 0);
       const totalAmount = recs.reduce((s,r) => s+r.amount, 0);
-
       return `<div style="margin-bottom:20px;">
         <div style="font-weight:600;color:#1e40af;margin-bottom:8px;">${month.replace('-','年')}月</div>
         <table style="width:100%;border-collapse:collapse;font-size:0.92rem;">
@@ -343,7 +425,6 @@
     }).join('');
   };
 
-  // --- サマリー ---
   function renderSummary() {
     const thisMonth = new Date().toISOString().slice(0,7);
     const m = records.filter(r => r.date === thisMonth);
@@ -360,7 +441,6 @@
       <div class="summary-item"><div class="s-label">ColÄ 今月売上</div><div class="s-val">¥${colaTotal.toLocaleString()}</div></div>`;
   }
 
-  // --- グラフ ---
   window.switchChart = function(type, btn) {
     currentChartType = type;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -397,7 +477,6 @@
     }
   }
 
-  // --- 履歴 ---
   function renderHistory() {
     const tbody = document.getElementById('history-body');
     const sorted = [...records].sort((a,b)=>b.id-a.id);
@@ -419,7 +498,6 @@
     }).join('');
   }
 
-  // --- ユーティリティ ---
   function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function showToast(msg) {
     const t = document.getElementById('toast');
@@ -436,7 +514,6 @@
     renderHistory();
   }
 
-  // --- イベント設定 ---
   document.getElementById('inp-date').value = new Date().toISOString().slice(0,7);
   document.getElementById('inp-product').addEventListener('change', updateCountAndAmount);
   document.getElementById('inp-count').addEventListener('input', calcAmount);
