@@ -138,10 +138,6 @@
   <div class="card" id="cola-mgmt-card">
     <h2>ColÄ 販売管理</h2>
     <div class="summary-grid" style="margin-bottom:16px;">
-      <div class="summary-item main">
-        <div class="s-label">合計売上</div>
-        <div class="s-val" id="cola-total-revenue">¥0</div>
-      </div>
       <div class="summary-item">
         <div class="s-label">合計販売数</div>
         <div class="s-val" id="cola-total-sold">0 個</div>
@@ -330,6 +326,9 @@
     renderColaStores();
   });
 
+  let selectedColaStoreIdx = 0;
+  window.selectColaStore = function(idx) { selectedColaStoreIdx = idx; renderColaStores(); };
+
   window.saveColaStore = async function(idx) {
     const store = COLA_STORES[idx];
     const deliveries = parseInt(document.getElementById(`cola-del-${idx}`).value, 10) || 0;
@@ -344,56 +343,63 @@
   function renderColaStores() {
     const container = document.getElementById('cola-stores-list');
     if (!container) return;
-    let totalDeliveries = 0, totalSold = 0, totalRevenue = 0;
-    const html = COLA_STORES.map((store, idx) => {
+    let totalDeliveries = 0, totalSold = 0;
+    const storeStats = COLA_STORES.map(store => {
       const data       = colaStoreData[store.name] || {};
       const deliveries = data.deliveries || 0;
-      // sold は sales レコードから自動集計
       const sold = records
         .filter(r => r.product === 'ColÄ' && r.storeName === store.name)
         .reduce((s, r) => s + (r.count || 0), 0);
-      const inventory = Math.max(0, deliveries - sold);
-      const revenue   = sold * store.price;
       totalDeliveries += deliveries;
       totalSold       += sold;
-      totalRevenue    += revenue;
-      return `<div style="border:1.5px solid #e2e8f0;border-radius:14px;padding:14px;margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-          <span style="font-weight:700;font-size:0.95rem;">${escHtml(store.name)}</span>
-          <span style="font-size:0.75rem;color:#64748b;background:#f1f5f9;padding:3px 10px;border-radius:20px;font-weight:600;">¥${store.price.toLocaleString()}/個</span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-          <div>
-            <label style="font-size:0.65rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">納品数</label>
-            <input type="number" id="cola-del-${idx}" value="${deliveries}" min="0"
-              style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.95rem;font-family:inherit;background:#f8fafc;outline:none;">
-          </div>
-          <div style="background:#f8fafc;border-radius:10px;padding:10px;text-align:center;border:1.5px solid #e2e8f0;">
-            <div style="font-size:0.65rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">販売数</div>
-            <div style="font-size:1.15rem;font-weight:800;color:#0f172a;">${sold} 個</div>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-          <div style="background:#f0fdf4;border-radius:10px;padding:10px;text-align:center;">
-            <div style="font-size:0.62rem;color:#16a34a;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">在庫数</div>
-            <div style="font-size:1.15rem;font-weight:800;color:#16a34a;">${inventory} 個</div>
-          </div>
-          <div style="background:#eff6ff;border-radius:10px;padding:10px;text-align:center;">
-            <div style="font-size:0.62rem;color:#2563eb;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">売上金額</div>
-            <div style="font-size:1.15rem;font-weight:800;color:#2563eb;">¥${revenue.toLocaleString()}</div>
-          </div>
-        </div>
-        <button onclick="saveColaStore(${idx})"
-          style="width:100%;padding:11px;background:linear-gradient(135deg,#4f46e5,#6366f1);color:white;border:none;border-radius:10px;font-weight:700;font-size:0.88rem;cursor:pointer;font-family:inherit;box-shadow:0 3px 10px rgba(79,70,229,0.25);">
-          納品数を保存
-        </button>
-      </div>`;
-    }).join('');
-    container.innerHTML = html;
-    const totalInventory = totalDeliveries - totalSold;
+      return { deliveries, sold, inventory: Math.max(0, deliveries - sold), revenue: sold * store.price };
+    });
+
     document.getElementById('cola-total-sold').textContent      = totalSold + ' 個';
-    document.getElementById('cola-total-revenue').textContent   = '¥' + totalRevenue.toLocaleString();
-    document.getElementById('cola-total-inventory').textContent = totalInventory + ' 個';
+    document.getElementById('cola-total-inventory').textContent = (totalDeliveries - totalSold) + ' 個';
+
+    const si = selectedColaStoreIdx;
+    const store = COLA_STORES[si];
+    const st    = storeStats[si];
+
+    const selectorHtml = `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+      ${COLA_STORES.map((s, i) => `<button onclick="selectColaStore(${i})"
+        style="padding:7px 12px;border-radius:20px;border:1.5px solid ${i===si?'#4f46e5':'#e2e8f0'};background:${i===si?'#4f46e5':'#f8fafc'};color:${i===si?'#fff':'#64748b'};font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;">${escHtml(s.name)}</button>`).join('')}
+    </div>`;
+
+    const detailHtml = `<div style="border:1.5px solid #e2e8f0;border-radius:14px;padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span style="font-weight:700;font-size:0.95rem;">${escHtml(store.name)}</span>
+        <span style="font-size:0.75rem;color:#64748b;background:#f1f5f9;padding:3px 10px;border-radius:20px;font-weight:600;">¥${store.price.toLocaleString()}/個</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div>
+          <label style="font-size:0.65rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">納品数</label>
+          <input type="number" id="cola-del-${si}" value="${st.deliveries}" min="0"
+            style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.95rem;font-family:inherit;background:#f8fafc;outline:none;">
+        </div>
+        <div style="background:#f8fafc;border-radius:10px;padding:10px;text-align:center;border:1.5px solid #e2e8f0;">
+          <div style="font-size:0.65rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">販売数</div>
+          <div style="font-size:1.15rem;font-weight:800;color:#0f172a;">${st.sold} 個</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div style="background:#f0fdf4;border-radius:10px;padding:10px;text-align:center;">
+          <div style="font-size:0.62rem;color:#16a34a;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">在庫数</div>
+          <div style="font-size:1.15rem;font-weight:800;color:#16a34a;">${st.inventory} 個</div>
+        </div>
+        <div style="background:#eff6ff;border-radius:10px;padding:10px;text-align:center;">
+          <div style="font-size:0.62rem;color:#2563eb;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">売上金額</div>
+          <div style="font-size:1.15rem;font-weight:800;color:#2563eb;">¥${st.revenue.toLocaleString()}</div>
+        </div>
+      </div>
+      <button onclick="saveColaStore(${si})"
+        style="width:100%;padding:11px;background:linear-gradient(135deg,#4f46e5,#6366f1);color:white;border:none;border-radius:10px;font-weight:700;font-size:0.88rem;cursor:pointer;font-family:inherit;box-shadow:0 3px 10px rgba(79,70,229,0.25);">
+        納品数を保存
+      </button>
+    </div>`;
+
+    container.innerHTML = selectorHtml + detailHtml;
   }
 
   let records = [];
