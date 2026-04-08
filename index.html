@@ -625,7 +625,12 @@
     if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
     if (records.length === 0) return;
     if (currentChartType === 'month') {
-      const months = getMonths();
+      const now = new Date();
+      const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      const prev = new Date(now.getFullYear(), now.getMonth()-1, 1);
+      const next = new Date(now.getFullYear(), now.getMonth()+1, 1);
+      const defaultMonths = new Set([fmt(prev), fmt(now), fmt(next)]);
+      const months = getMonths().filter(m => defaultMonths.has(m));
       const products = [...new Set(records.map(r=>r.product))].sort();
       const datasets = products.map((p,i) => ({
         label: p,
