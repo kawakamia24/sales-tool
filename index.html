@@ -343,20 +343,30 @@
   function renderColaStores() {
     const container = document.getElementById('cola-stores-list');
     if (!container) return;
-    let totalDeliveries = 0, totalSold = 0;
-    const storeStats = COLA_STORES.map(store => {
+
+    // VIEHÄttÄVÄ (index 0) が全在庫を保有。他店舗への納品数分だけ減る。
+    const vieDeliveries = colaStoreData['VIEHÄttÄVÄ']?.deliveries || 0;
+    const otherDeliveries = COLA_STORES.slice(1)
+      .reduce((sum, s) => sum + (colaStoreData[s.name]?.deliveries || 0), 0);
+
+    let totalSold = 0;
+    const storeStats = COLA_STORES.map((store, i) => {
       const data       = colaStoreData[store.name] || {};
       const deliveries = data.deliveries || 0;
       const sold = records
         .filter(r => r.product === 'ColÄ' && r.storeName === store.name)
         .reduce((s, r) => s + (r.count || 0), 0);
-      totalDeliveries += deliveries;
-      totalSold       += sold;
-      return { deliveries, sold, inventory: Math.max(0, deliveries - sold), revenue: sold * store.price };
+      totalSold += sold;
+      // VIEHÄttÄVÄ: 仕入数 - 他店舗納品合計 - 自店販売数
+      const inventory = i === 0
+        ? Math.max(0, vieDeliveries - otherDeliveries - sold)
+        : Math.max(0, deliveries - sold);
+      return { deliveries, sold, inventory, revenue: sold * store.price };
     });
 
     document.getElementById('cola-total-sold').textContent      = totalSold + ' 個';
-    document.getElementById('cola-total-inventory').textContent = (totalDeliveries - totalSold) + ' 個';
+    // 合計在庫 = VIEHÄttÄVÄ仕入数 - 全店販売数合計
+    document.getElementById('cola-total-inventory').textContent = Math.max(0, vieDeliveries - totalSold) + ' 個';
 
     const si = selectedColaStoreIdx;
     const store = COLA_STORES[si];
@@ -374,7 +384,7 @@
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
         <div>
-          <label style="font-size:0.65rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">納品数</label>
+          <label style="font-size:0.65rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">${si === 0 ? '仕入数' : '納品数'}</label>
           <input type="number" id="cola-del-${si}" value="${st.deliveries}" min="0"
             style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.95rem;font-family:inherit;background:#f8fafc;outline:none;">
         </div>
@@ -395,7 +405,7 @@
       </div>
       <button onclick="saveColaStore(${si})"
         style="width:100%;padding:11px;background:linear-gradient(135deg,#4f46e5,#6366f1);color:white;border:none;border-radius:10px;font-weight:700;font-size:0.88rem;cursor:pointer;font-family:inherit;box-shadow:0 3px 10px rgba(79,70,229,0.25);">
-        納品数を保存
+        ${si === 0 ? '仕入数を保存' : '納品数を保存'}
       </button>
     </div>`;
 
