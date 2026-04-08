@@ -631,7 +631,8 @@
       const next = new Date(now.getFullYear(), now.getMonth()+1, 1);
       const defaultMonths = new Set([fmt(prev), fmt(now), fmt(next)]);
       const months = getMonths().filter(m => defaultMonths.has(m));
-      const products = [...new Set(records.map(r=>r.product))].sort();
+      const products = [...new Set(records.map(r=>r.product))]
+        .sort((a,b) => records.filter(r=>r.product===b).reduce((s,r)=>s+r.amount,0) - records.filter(r=>r.product===a).reduce((s,r)=>s+r.amount,0));
       const datasets = products.map((p,i) => ({
         label: p,
         data: months.map(m => records.filter(r=>r.product===p&&r.date.startsWith(m)).reduce((s,r)=>s+r.amount,0)),
