@@ -526,7 +526,8 @@
 
   function updateMonthFilter() {
     const sel = document.getElementById('filter-month');
-    const cur = sel.value;
+    const thisMonth = new Date().toISOString().slice(0, 7);
+    const cur = sel.value || thisMonth;
     sel.innerHTML = '<option value="">すべて</option>';
     getMonths().forEach(m => {
       const opt = document.createElement('option');
