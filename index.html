@@ -646,7 +646,7 @@
         data: { labels: months.map(m=>m.replace('-','年')+'月'), datasets },
         options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'bottom'}, tooltip:{callbacks:{label:c=>`${c.dataset.label}: ¥${c.raw.toLocaleString()}`}} }, scales:{ y:{beginAtZero:true,ticks:{callback:v=>'¥'+v.toLocaleString()}} } }
       });
-    } else {
+    } else if (currentChartType === 'product') {
       const products = [...new Set(records.map(r=>r.product))]
         .map(p => ({ p, amt: records.filter(r=>r.product===p).reduce((s,r)=>s+r.amount,0) }))
         .sort((a,b) => b.amt - a.amt);
