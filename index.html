@@ -164,9 +164,9 @@
   <div class="card">
     <h2>売上グラフ</h2>
     <div class="tab-row">
-      <button class="tab-btn active" onclick="switchChart('month', this)">月別推移</button>
+      <button class="tab-btn active" onclick="switchChart('yoy', this)">昨年比較</button>
+      <button class="tab-btn" onclick="switchChart('month', this)">月別推移</button>
       <button class="tab-btn" onclick="switchChart('product', this)">商品別</button>
-      <button class="tab-btn" onclick="switchChart('yoy', this)">昨年比較</button>
     </div>
     <div class="chart-wrapper">
       <canvas id="salesChart"></canvas>
@@ -419,7 +419,7 @@
 
   let records = [];
   let chartInstance = null;
-  let currentChartType = 'month';
+  let currentChartType = 'yoy';
 
   onSnapshot(colRef, (snapshot) => {
     records = snapshot.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
