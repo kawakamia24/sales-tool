@@ -166,6 +166,7 @@
     <div class="tab-row">
       <button class="tab-btn active" onclick="switchChart('month', this)">月別推移</button>
       <button class="tab-btn" onclick="switchChart('product', this)">商品別</button>
+      <button class="tab-btn" onclick="switchChart('yoy', this)">昨年比較</button>
     </div>
     <div class="chart-wrapper">
       <canvas id="salesChart"></canvas>
@@ -653,6 +654,25 @@
         type: 'doughnut',
         data: { labels: products.map(x=>x.p), datasets:[{ data: products.map(x=>x.amt), backgroundColor: COLORS.slice(0,products.length), borderWidth:2 }] },
         options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'bottom'}, tooltip:{callbacks:{label:c=>`${c.label}: ¥${c.raw.toLocaleString()}`}} } }
+      });
+    } else {
+      const thisYear = new Date().getFullYear();
+      const lastYear = thisYear - 1;
+      const monthLabels = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+      const sumByMonth = (year) => Array.from({length:12}, (_,i) => {
+        const m = `${year}-${String(i+1).padStart(2,'0')}`;
+        return records.filter(r=>r.date===m).reduce((s,r)=>s+r.amount,0);
+      });
+      chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: monthLabels,
+          datasets: [
+            { label: `${thisYear}年`, data: sumByMonth(thisYear), backgroundColor: '#4f46e599', borderColor: '#4f46e5', borderWidth: 2 },
+            { label: `${lastYear}年`, data: sumByMonth(lastYear), backgroundColor: '#94a3b899', borderColor: '#94a3b8', borderWidth: 2 },
+          ]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'bottom'}, tooltip:{callbacks:{label:c=>`${c.dataset.label}: ¥${c.raw.toLocaleString()}`}} }, scales:{ y:{beginAtZero:true,ticks:{callback:v=>'¥'+v.toLocaleString()}} } }
       });
     }
   }
