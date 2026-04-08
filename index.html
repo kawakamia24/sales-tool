@@ -640,10 +640,12 @@
         options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'bottom'}, tooltip:{callbacks:{label:c=>`${c.dataset.label}: ¥${c.raw.toLocaleString()}`}} }, scales:{ y:{beginAtZero:true,ticks:{callback:v=>'¥'+v.toLocaleString()}} } }
       });
     } else {
-      const products = [...new Set(records.map(r=>r.product))].sort();
+      const products = [...new Set(records.map(r=>r.product))]
+        .map(p => ({ p, amt: records.filter(r=>r.product===p).reduce((s,r)=>s+r.amount,0) }))
+        .sort((a,b) => b.amt - a.amt);
       chartInstance = new Chart(ctx, {
         type: 'doughnut',
-        data: { labels: products, datasets:[{ data: products.map(p=>records.filter(r=>r.product===p).reduce((s,r)=>s+r.amount,0)), backgroundColor: COLORS.slice(0,products.length), borderWidth:2 }] },
+        data: { labels: products.map(x=>x.p), datasets:[{ data: products.map(x=>x.amt), backgroundColor: COLORS.slice(0,products.length), borderWidth:2 }] },
         options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'bottom'}, tooltip:{callbacks:{label:c=>`${c.label}: ¥${c.raw.toLocaleString()}`}} } }
       });
     }
