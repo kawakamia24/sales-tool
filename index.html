@@ -139,7 +139,7 @@
     <h2>ColÄ 販売管理</h2>
     <div class="summary-grid" style="margin-bottom:16px;">
       <div class="summary-item">
-        <div class="s-label">合計販売数</div>
+        <div class="s-label">今月の販売数</div>
         <div class="s-val" id="cola-total-sold">0 個</div>
       </div>
       <div class="summary-item">
@@ -364,7 +364,11 @@
       return { deliveries, sold, inventory, revenue: sold * store.price };
     });
 
-    document.getElementById('cola-total-sold').textContent      = totalSold + ' 個';
+    const thisMonth = new Date().toISOString().slice(0, 7);
+    const thisMonthSold = records
+      .filter(r => r.product === 'ColÄ' && r.date === thisMonth)
+      .reduce((s, r) => s + (r.count || 0), 0);
+    document.getElementById('cola-total-sold').textContent      = thisMonthSold + ' 個';
     // 合計在庫 = VIEHÄttÄVÄ仕入数 - 全店販売数合計
     document.getElementById('cola-total-inventory').textContent = Math.max(0, vieDeliveries - totalSold) + ' 個';
 
