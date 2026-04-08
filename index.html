@@ -104,20 +104,24 @@
         <input type="text" id="inp-other-name" placeholder="例: ドリンク販売">
       </div>
       <div id="cola-preset-field" style="display:none">
-        <label>個数 × 金額</label>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <div class="cola-qty-row">
-            <input type="number" class="cola-qty" data-price="2500" placeholder="0" min="0" oninput="calcColaAmount()">
-            <span>個 × ¥2,500</span>
-          </div>
-          <div class="cola-qty-row">
-            <input type="number" class="cola-qty" data-price="2000" placeholder="0" min="0" oninput="calcColaAmount()">
-            <span>個 × ¥2,000</span>
-          </div>
-          <div class="cola-qty-row">
-            <input type="number" class="cola-qty" data-price="1500" placeholder="0" min="0" oninput="calcColaAmount()">
-            <span>個 × ¥1,500</span>
-          </div>
+        <div>
+          <label>販売先</label>
+          <select id="inp-cola-store" onchange="calcColaAmount()">
+            <option value="">選択してください</option>
+            <option value="VIEHÄttÄVÄ" data-price="2000">VIEHÄttÄVÄ（¥2,000）</option>
+            <option value="仁保" data-price="2500">仁保（¥2,500）</option>
+            <option value="南大門" data-price="2500">南大門（¥2,500）</option>
+            <option value="長門峡" data-price="2500">長門峡（¥2,500）</option>
+            <option value="ひなとりん" data-price="2500">ひなとりん（¥2,500）</option>
+            <option value="APRICITY" data-price="1500">APRICITY（¥1,500）</option>
+            <option value="ロハス" data-price="2500">ロハス（¥2,500）</option>
+            <option value="重源の郷" data-price="2500">重源の郷（¥2,500）</option>
+            <option value="あいお" data-price="2500">あいお（¥2,500）</option>
+          </select>
+        </div>
+        <div style="margin-top:10px;">
+          <label>販売数</label>
+          <input type="number" id="inp-cola-qty" placeholder="例: 5" min="1" oninput="calcColaAmount()">
         </div>
       </div>
       <div>
@@ -329,9 +333,8 @@
   window.saveColaStore = async function(idx) {
     const store = COLA_STORES[idx];
     const deliveries = parseInt(document.getElementById(`cola-del-${idx}`).value, 10) || 0;
-    const sold       = parseInt(document.getElementById(`cola-sold-${idx}`).value, 10) || 0;
     try {
-      await setDoc(doc(db, "cola_stores", store.name), { deliveries, sold });
+      await setDoc(doc(db, "cola_stores", store.name), { deliveries }, { merge: true });
       showToast('保存しました！');
     } catch(e) {
       alert('保存に失敗しました: ' + e.message);
@@ -343,11 +346,14 @@
     if (!container) return;
     let totalDeliveries = 0, totalSold = 0, totalRevenue = 0;
     const html = COLA_STORES.map((store, idx) => {
-      const data      = colaStoreData[store.name] || { deliveries: 0, sold: 0 };
+      const data       = colaStoreData[store.name] || {};
       const deliveries = data.deliveries || 0;
-      const sold       = data.sold || 0;
-      const inventory  = Math.max(0, deliveries - sold);
-      const revenue    = sold * store.price;
+      // sold は sales レコードから自動集計
+      const sold = records
+        .filter(r => r.product === 'ColÄ' && r.storeName === store.name)
+        .reduce((s, r) => s + (r.count || 0), 0);
+      const inventory = Math.max(0, deliveries - sold);
+      const revenue   = sold * store.price;
       totalDeliveries += deliveries;
       totalSold       += sold;
       totalRevenue    += revenue;
@@ -362,10 +368,9 @@
             <input type="number" id="cola-del-${idx}" value="${deliveries}" min="0"
               style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.95rem;font-family:inherit;background:#f8fafc;outline:none;">
           </div>
-          <div>
-            <label style="font-size:0.65rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">販売数</label>
-            <input type="number" id="cola-sold-${idx}" value="${sold}" min="0"
-              style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.95rem;font-family:inherit;background:#f8fafc;outline:none;">
+          <div style="background:#f8fafc;border-radius:10px;padding:10px;text-align:center;border:1.5px solid #e2e8f0;">
+            <div style="font-size:0.65rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">販売数</div>
+            <div style="font-size:1.15rem;font-weight:800;color:#0f172a;">${sold} 個</div>
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
@@ -380,7 +385,7 @@
         </div>
         <button onclick="saveColaStore(${idx})"
           style="width:100%;padding:11px;background:linear-gradient(135deg,#4f46e5,#6366f1);color:white;border:none;border-radius:10px;font-weight:700;font-size:0.88rem;cursor:pointer;font-family:inherit;box-shadow:0 3px 10px rgba(79,70,229,0.25);">
-          保存
+          納品数を保存
         </button>
       </div>`;
     }).join('');
@@ -423,18 +428,27 @@
       if (!otherName) return alert('商品名（詳細）を入力してください。');
       record.otherName = otherName;
     }
+    if (product === 'ColÄ') {
+      const storeName = document.getElementById('inp-cola-store').value;
+      const qty = parseInt(document.getElementById('inp-cola-qty').value, 10);
+      if (!storeName) return alert('販売先を選択してください。');
+      if (!qty || qty <= 0) return alert('販売数を入力してください。');
+      record.storeName = storeName;
+      record.count = qty;
+    }
     try {
       await addDoc(colRef, record);
       document.getElementById('inp-product').value = '';
       document.getElementById('inp-count').value = '';
       document.getElementById('inp-event-name').value = '';
       document.getElementById('inp-other-name').value = '';
+      document.getElementById('inp-cola-store').value = '';
+      document.getElementById('inp-cola-qty').value = '';
       document.getElementById('inp-amount').value = '';
       document.getElementById('count-field').style.display = 'none';
       document.getElementById('event-name-field').style.display = 'none';
       document.getElementById('cola-preset-field').style.display = 'none';
       document.getElementById('other-name-field').style.display = 'none';
-      document.querySelectorAll('.cola-qty').forEach(i => i.value = '');
       showToast('追加しました！');
     } catch(e) {
       alert('保存に失敗しました: ' + e.message);
@@ -462,16 +476,17 @@
     document.getElementById('other-name-field').style.display  = showOther  ? '' : 'none';
     if (!showCount)  document.getElementById('inp-count').value = '';
     if (!showEvent)  document.getElementById('inp-event-name').value = '';
-    if (!showPreset) document.querySelectorAll('.cola-qty').forEach(i => i.value = '');
+    if (!showPreset) { document.getElementById('inp-cola-store').value = ''; document.getElementById('inp-cola-qty').value = ''; }
     if (!showOther)  document.getElementById('inp-other-name').value = '';
     document.getElementById('inp-amount').value = '';
   };
 
   window.calcColaAmount = function() {
-    let total = 0;
-    document.querySelectorAll('.cola-qty').forEach(i => {
-      total += (parseInt(i.value,10)||0) * parseInt(i.dataset.price,10);
-    });
+    const sel = document.getElementById('inp-cola-store');
+    const qty = parseInt(document.getElementById('inp-cola-qty').value, 10) || 0;
+    const opt = sel && sel.selectedOptions[0];
+    const price = opt ? parseInt(opt.dataset.price || '0', 10) : 0;
+    const total = qty * price;
     document.getElementById('inp-amount').value = total > 0 ? total : '';
   };
 
@@ -648,6 +663,7 @@
     renderSummary();
     renderChart();
     renderHistory();
+    renderColaStores();
   }
 
   document.getElementById('inp-date').value = new Date().toISOString().slice(0,7);
