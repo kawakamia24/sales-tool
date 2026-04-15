@@ -786,7 +786,7 @@
     SERIES_DEF.forEach(s => {
       const wrap = document.createElement('div');
       wrap.style.cssText = 'margin-bottom:18px;';
-      wrap.innerHTML = `<div style="font-size:0.75rem;font-weight:700;color:#64748b;margin-bottom:6px;">${s.label}</div><div style="position:relative;height:240px;"><canvas id="c-${sectionId}-${s.key}"></canvas></div>`;
+      wrap.innerHTML = `<div style="font-size:0.75rem;font-weight:700;color:#64748b;margin-bottom:6px;">${s.label}</div><div style="position:relative;height:320px;"><canvas id="c-${sectionId}-${s.key}"></canvas></div>`;
       section.appendChild(wrap);
       const ctx = document.getElementById(`c-${sectionId}-${s.key}`).getContext('2d');
       chartInstances.push(buildChart(ctx, s));
