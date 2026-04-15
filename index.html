@@ -68,6 +68,23 @@
     .page.active { display: block; }
     /* ========== 分析画面 ========== */
     .analysis-section-title { font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; }
+    .yoy-item { border-radius: 14px; padding: 14px 12px; background: #f8fafc; border: 1px solid #e2e8f0; }
+    .yoy-item.main { grid-column: span 2; background: linear-gradient(135deg, #4f46e5, #6366f1); border: none; }
+    .yoy-item .s-label { font-size: 0.68rem; color: #94a3b8; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .yoy-item.main .s-label { color: rgba(255,255,255,0.75); }
+    .yoy-item .s-val { font-size: 1.15rem; font-weight: 800; color: #1e293b; }
+    .yoy-item.main .s-val { color: #fff; font-size: 1.75rem; }
+    .yoy-item .yoy-row { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; }
+    .yoy-item.main .yoy-row { border-top: 1px solid rgba(255,255,255,0.2); }
+    .yoy-item .yoy-last { font-size: 0.72rem; color: #94a3b8; font-weight: 500; }
+    .yoy-item.main .yoy-last { color: rgba(255,255,255,0.65); }
+    .yoy-badge { font-size: 0.72rem; font-weight: 700; padding: 2px 7px; border-radius: 20px; }
+    .yoy-badge.up { background: #dcfce7; color: #16a34a; }
+    .yoy-badge.down { background: #fee2e2; color: #dc2626; }
+    .yoy-badge.flat { background: #f1f5f9; color: #94a3b8; }
+    .yoy-item.main .yoy-badge.up { background: rgba(255,255,255,0.25); color: #fff; }
+    .yoy-item.main .yoy-badge.down { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.85); }
+    .yoy-item.main .yoy-badge.flat { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.65); }
   </style>
 </head>
 <body>
@@ -636,21 +653,71 @@
   };
 
   function renderSummary() {
-    const thisMonth = new Date().toISOString().slice(0,7);
-    const m = records.filter(r => r.date === thisMonth);
+    const now = new Date();
+    const thisMonth = now.toISOString().slice(0,7);
+    const lastYearMonth = `${now.getFullYear()-1}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const m  = records.filter(r => r.date === thisMonth);
+    const ly = records.filter(r => r.date === lastYearMonth);
+
     const total    = m.reduce((s,r) => s+r.amount, 0);
     const vieCount = m.filter(r=>r.product==='VIEsauna').reduce((s,r)=>s+(r.count||0),0);
     const tentCount= m.filter(r=>r.product==='テントサウナ').reduce((s,r)=>s+(r.count||0),0);
     const cafeTotal= m.filter(r=>r.product==='Cafe').reduce((s,r)=>s+r.amount,0);
     const colaTotal= m.filter(r=>r.product==='ColÄ').reduce((s,r)=>s+r.amount,0);
-    const html = `
+
+    document.getElementById('summary-grid').innerHTML = `
       <div class="summary-item main"><div class="s-label">今月の売上合計</div><div class="s-val">¥${total.toLocaleString()}</div></div>
       <div class="summary-item"><div class="s-label">VIEsauna</div><div class="s-val">${vieCount} 件</div></div>
       <div class="summary-item"><div class="s-label">テントサウナ</div><div class="s-val">${tentCount} 件</div></div>
       <div class="summary-item"><div class="s-label">Cafe 売上</div><div class="s-val">¥${cafeTotal.toLocaleString()}</div></div>
       <div class="summary-item"><div class="s-label">ColÄ 売上</div><div class="s-val">¥${colaTotal.toLocaleString()}</div></div>`;
-    document.getElementById('summary-grid').innerHTML = html;
-    document.getElementById('analysis-summary-grid').innerHTML = html;
+
+    const lyTotal    = ly.reduce((s,r) => s+r.amount, 0);
+    const lyVieCount = ly.filter(r=>r.product==='VIEsauna').reduce((s,r)=>s+(r.count||0),0);
+    const lyTentCount= ly.filter(r=>r.product==='テントサウナ').reduce((s,r)=>s+(r.count||0),0);
+    const lyCafeTotal= ly.filter(r=>r.product==='Cafe').reduce((s,r)=>s+r.amount,0);
+    const lyColaTotal= ly.filter(r=>r.product==='ColÄ').reduce((s,r)=>s+r.amount,0);
+
+    function badge(cur, prev) {
+      if (prev === 0) return cur > 0 ? '<span class="yoy-badge up">NEW</span>' : '<span class="yoy-badge flat">—</span>';
+      const pct = Math.round((cur - prev) / prev * 100);
+      const cls = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
+      const sign = pct > 0 ? '+' : '';
+      return `<span class="yoy-badge ${cls}">${sign}${pct}%</span>`;
+    }
+    function amtRow(cur, prev) {
+      return `<div class="yoy-row"><span class="yoy-last">昨年 ¥${prev.toLocaleString()}</span>${badge(cur, prev)}</div>`;
+    }
+    function cntRow(cur, prev) {
+      return `<div class="yoy-row"><span class="yoy-last">昨年 ${prev} 件</span>${badge(cur, prev)}</div>`;
+    }
+
+    document.getElementById('analysis-summary-grid').innerHTML = `
+      <div class="yoy-item main">
+        <div class="s-label">今月の売上合計</div>
+        <div class="s-val">¥${total.toLocaleString()}</div>
+        ${amtRow(total, lyTotal)}
+      </div>
+      <div class="yoy-item">
+        <div class="s-label">VIEsauna</div>
+        <div class="s-val">${vieCount} 件</div>
+        ${cntRow(vieCount, lyVieCount)}
+      </div>
+      <div class="yoy-item">
+        <div class="s-label">テントサウナ</div>
+        <div class="s-val">${tentCount} 件</div>
+        ${cntRow(tentCount, lyTentCount)}
+      </div>
+      <div class="yoy-item">
+        <div class="s-label">Cafe 売上</div>
+        <div class="s-val">¥${cafeTotal.toLocaleString()}</div>
+        ${amtRow(cafeTotal, lyCafeTotal)}
+      </div>
+      <div class="yoy-item">
+        <div class="s-label">ColÄ 売上</div>
+        <div class="s-val">¥${colaTotal.toLocaleString()}</div>
+        ${amtRow(colaTotal, lyColaTotal)}
+      </div>`;
   }
 
   window.switchPage = function(page) {
