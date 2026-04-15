@@ -85,6 +85,12 @@
     .yoy-item.main .yoy-badge.up { background: rgba(255,255,255,0.25); color: #fff; }
     .yoy-item.main .yoy-badge.down { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.85); }
     .yoy-item.main .yoy-badge.flat { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.65); }
+    .proj-row { margin-top: 7px; padding: 6px 9px; background: #f0f9ff; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; }
+    .yoy-item.main .proj-row { background: rgba(255,255,255,0.15); }
+    .proj-label { font-size: 0.66rem; font-weight: 600; color: #0284c7; letter-spacing: 0.03em; }
+    .yoy-item.main .proj-label { color: rgba(255,255,255,0.8); }
+    .proj-val { font-size: 0.82rem; font-weight: 800; color: #0369a1; }
+    .yoy-item.main .proj-val { color: #fff; }
   </style>
 </head>
 <body>
@@ -678,6 +684,13 @@
     const lyCafeTotal= ly.filter(r=>r.product==='Cafe').reduce((s,r)=>s+r.amount,0);
     const lyColaTotal= ly.filter(r=>r.product==='ColÄ').reduce((s,r)=>s+r.amount,0);
 
+    // 着地予想の計算係数
+    const elapsedDays  = now.getDate();
+    const totalDays    = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
+    const projFactor   = elapsedDays > 0 ? totalDays / elapsedDays : 1;
+
+    function proj(val) { return Math.round(val * projFactor); }
+
     function badge(cur, prev) {
       if (prev === 0) return cur > 0 ? '<span class="yoy-badge up">NEW</span>' : '<span class="yoy-badge flat">—</span>';
       const pct = Math.round((cur - prev) / prev * 100);
@@ -691,32 +704,43 @@
     function cntRow(cur, prev) {
       return `<div class="yoy-row"><span class="yoy-last">昨年 ${prev} 件</span>${badge(cur, prev)}</div>`;
     }
+    function projAmtRow(val) {
+      return `<div class="proj-row"><span class="proj-label">着地予想（${elapsedDays}/${totalDays}日）</span><span class="proj-val">¥${proj(val).toLocaleString()}</span></div>`;
+    }
+    function projCntRow(val) {
+      return `<div class="proj-row"><span class="proj-label">着地予想（${elapsedDays}/${totalDays}日）</span><span class="proj-val">${proj(val)} 件</span></div>`;
+    }
 
     document.getElementById('analysis-summary-grid').innerHTML = `
       <div class="yoy-item main">
         <div class="s-label">今月の売上合計</div>
         <div class="s-val">¥${total.toLocaleString()}</div>
         ${amtRow(total, lyTotal)}
+        ${projAmtRow(total)}
       </div>
       <div class="yoy-item">
         <div class="s-label">VIEsauna</div>
         <div class="s-val">${vieCount} 件</div>
         ${cntRow(vieCount, lyVieCount)}
+        ${projCntRow(vieCount)}
       </div>
       <div class="yoy-item">
         <div class="s-label">テントサウナ</div>
         <div class="s-val">${tentCount} 件</div>
         ${cntRow(tentCount, lyTentCount)}
+        ${projCntRow(tentCount)}
       </div>
       <div class="yoy-item">
         <div class="s-label">Cafe 売上</div>
         <div class="s-val">¥${cafeTotal.toLocaleString()}</div>
         ${amtRow(cafeTotal, lyCafeTotal)}
+        ${projAmtRow(cafeTotal)}
       </div>
       <div class="yoy-item">
         <div class="s-label">ColÄ 売上</div>
         <div class="s-val">¥${colaTotal.toLocaleString()}</div>
         ${amtRow(colaTotal, lyColaTotal)}
+        ${projAmtRow(colaTotal)}
       </div>`;
   }
 
