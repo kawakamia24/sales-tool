@@ -59,7 +59,7 @@
     }
     /* ========== ボトムナビ ========== */
     body { padding-bottom: 80px; }
-    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e2e8f0; display: flex; z-index: 200; box-shadow: 0 -4px 16px rgba(0,0,0,0.07); }
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #e2e8f0; display: flex; z-index: 200; box-shadow: 0 -4px 16px rgba(0,0,0,0.07); -webkit-transform: translateZ(0); transform: translateZ(0); will-change: transform; padding-bottom: env(safe-area-inset-bottom); }
     .nav-btn { flex: 1; padding: 10px 0 8px; background: none; border: none; font-family: inherit; font-size: 0.7rem; font-weight: 600; color: #94a3b8; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; letter-spacing: 0.03em; transition: color 0.2s; }
     .nav-btn svg { width: 22px; height: 22px; stroke-width: 2; }
     .nav-btn.active { color: #4f46e5; }
