@@ -231,10 +231,14 @@
       <div class="tab-row">
         <button class="tab-btn active" onclick="switchChart('yoy', this)">昨年比較</button>
         <button class="tab-btn" onclick="switchChart('month', this)">月別推移</button>
-        <button class="tab-btn" onclick="switchChart('product', this)">商品別</button>
       </div>
-      <div class="chart-wrapper">
-        <canvas id="salesChart"></canvas>
+      <div id="chart-section-yoy"></div>
+      <div id="chart-section-month" style="display:none"></div>
+    </div>
+    <div class="card">
+      <h2>商品別</h2>
+      <div class="chart-wrapper" style="height:260px;">
+        <canvas id="productChart"></canvas>
       </div>
     </div>
   </div>
@@ -478,7 +482,8 @@
   }
 
   let records = [];
-  let chartInstance = null;
+  let chartInstances = [];
+  let productChartInstance = null;
   let currentChartType = 'yoy';
 
   onSnapshot(colRef, (snapshot) => {
@@ -755,65 +760,89 @@
     currentChartType = type;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+    document.getElementById('chart-section-yoy').style.display   = type === 'yoy'   ? '' : 'none';
+    document.getElementById('chart-section-month').style.display = type === 'month' ? '' : 'none';
     renderChart();
   };
 
+  const SERIES_DEF = [
+    { key: 'total', label: '売上合計',    color: '#4f46e5', amt: (m) => records.filter(r=>r.date===m).reduce((s,r)=>s+r.amount,0) },
+    { key: 'vie',   label: 'VIEsauna',   color: '#2563eb', amt: (m) => records.filter(r=>r.product==='VIEsauna'&&r.date===m).reduce((s,r)=>s+r.amount,0) },
+    { key: 'tent',  label: 'テントサウナ', color: '#0891b2', amt: (m) => records.filter(r=>r.product==='テントサウナ'&&r.date===m).reduce((s,r)=>s+r.amount,0) },
+    { key: 'cafe',  label: 'Cafe',       color: '#16a34a', amt: (m) => records.filter(r=>r.product==='Cafe'&&r.date===m).reduce((s,r)=>s+r.amount,0) },
+    { key: 'cola',  label: 'ColÄ',      color: '#be185d', amt: (m) => records.filter(r=>r.product==='ColÄ'&&r.date===m).reduce((s,r)=>s+r.amount,0) },
+  ];
+
+  function miniChartOptions(tooltip) {
+    return { responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{position:'bottom', labels:{boxWidth:10, font:{size:10}}}, tooltip:{callbacks:{label:tooltip}} },
+      scales:{ y:{beginAtZero:true, ticks:{callback:v=>'¥'+v.toLocaleString(), font:{size:9}, maxTicksLimit:4}} }
+    };
+  }
+
+  function buildSection(sectionId, buildChart) {
+    const section = document.getElementById(sectionId);
+    section.innerHTML = '';
+    SERIES_DEF.forEach(s => {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'margin-bottom:18px;';
+      wrap.innerHTML = `<div style="font-size:0.75rem;font-weight:700;color:#64748b;margin-bottom:6px;">${s.label}</div><div style="position:relative;height:150px;"><canvas id="c-${sectionId}-${s.key}"></canvas></div>`;
+      section.appendChild(wrap);
+      const ctx = document.getElementById(`c-${sectionId}-${s.key}`).getContext('2d');
+      chartInstances.push(buildChart(ctx, s));
+    });
+  }
+
   function renderChart() {
-    const ctx = document.getElementById('salesChart').getContext('2d');
-    if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+    chartInstances.forEach(c => c.destroy());
+    chartInstances = [];
     if (records.length === 0) return;
-    if (currentChartType === 'month') {
-      const months = getMonths();
-      const amtBy = (prod, m) => records.filter(r=>r.product===prod&&r.date===m).reduce((s,r)=>s+r.amount,0);
-      const totalBy = m => records.filter(r=>r.date===m).reduce((s,r)=>s+r.amount,0);
-      const series = [
-        { label: '売上合計',   color: '#4f46e5', data: months.map(m=>totalBy(m)) },
-        { label: 'VIEsauna',  color: '#2563eb', data: months.map(m=>amtBy('VIEsauna',m)) },
-        { label: 'テントサウナ', color: '#0891b2', data: months.map(m=>amtBy('テントサウナ',m)) },
-        { label: 'Cafe',      color: '#16a34a', data: months.map(m=>amtBy('Cafe',m)) },
-        { label: 'ColÄ',     color: '#be185d', data: months.map(m=>amtBy('ColÄ',m)) },
-      ];
-      const datasets = series.map(s => ({
-        label: s.label,
-        data: s.data,
-        borderColor: s.color,
-        backgroundColor: s.color + '22',
-        borderWidth: 2, tension: 0.3, fill: false, pointRadius: 3,
-      }));
-      chartInstance = new Chart(ctx, {
-        type: 'line',
-        data: { labels: months.map(m=>m.replace('-','年')+'月'), datasets },
-        options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'bottom'}, tooltip:{callbacks:{label:c=>`${c.dataset.label}: ¥${c.raw.toLocaleString()}`}} }, scales:{ y:{beginAtZero:true,ticks:{callback:v=>'¥'+v.toLocaleString()}} } }
-      });
-    } else if (currentChartType === 'product') {
-      const products = [...new Set(records.map(r=>r.product))]
-        .map(p => ({ p, amt: records.filter(r=>r.product===p).reduce((s,r)=>s+r.amount,0) }))
-        .sort((a,b) => b.amt - a.amt);
-      chartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: { labels: products.map(x=>x.p), datasets:[{ data: products.map(x=>x.amt), backgroundColor: COLORS.slice(0,products.length), borderWidth:2 }] },
-        options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'bottom'}, tooltip:{callbacks:{label:c=>`${c.label}: ¥${c.raw.toLocaleString()}`}} } }
+
+    const thisYear = new Date().getFullYear();
+    const lastYear = thisYear - 1;
+    const monthLabels = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+    if (currentChartType === 'yoy') {
+      buildSection('chart-section-yoy', (ctx, s) => {
+        const thisData = Array.from({length:12}, (_,i) => s.amt(`${thisYear}-${String(i+1).padStart(2,'0')}`));
+        const lastData = Array.from({length:12}, (_,i) => s.amt(`${lastYear}-${String(i+1).padStart(2,'0')}`));
+        return new Chart(ctx, { type:'bar',
+          data:{ labels:monthLabels, datasets:[
+            { label:`${thisYear}年`, data:thisData, backgroundColor:s.color+'99', borderColor:s.color, borderWidth:1.5 },
+            { label:`${lastYear}年`, data:lastData, backgroundColor:'#94a3b899', borderColor:'#94a3b8', borderWidth:1.5 },
+          ]},
+          options: miniChartOptions(c=>`${c.dataset.label}: ¥${c.raw.toLocaleString()}`)
+        });
       });
     } else {
-      const thisYear = new Date().getFullYear();
-      const lastYear = thisYear - 1;
-      const monthLabels = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-      const sumByMonth = (year) => Array.from({length:12}, (_,i) => {
-        const m = `${year}-${String(i+1).padStart(2,'0')}`;
-        return records.filter(r=>r.date===m).reduce((s,r)=>s+r.amount,0);
-      });
-      chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: monthLabels,
-          datasets: [
-            { label: `${thisYear}年`, data: sumByMonth(thisYear), backgroundColor: '#4f46e599', borderColor: '#4f46e5', borderWidth: 2 },
-            { label: `${lastYear}年`, data: sumByMonth(lastYear), backgroundColor: '#94a3b899', borderColor: '#94a3b8', borderWidth: 2 },
-          ]
-        },
-        options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'bottom'}, tooltip:{callbacks:{label:c=>`${c.dataset.label}: ¥${c.raw.toLocaleString()}`}} }, scales:{ y:{beginAtZero:true,ticks:{callback:v=>'¥'+v.toLocaleString()}} } }
+      const months = getMonths();
+      buildSection('chart-section-month', (ctx, s) => {
+        return new Chart(ctx, { type:'line',
+          data:{ labels:months.map(m=>m.replace('-','年')+'月'), datasets:[{
+            label:s.label, data:months.map(m=>s.amt(m)),
+            borderColor:s.color, backgroundColor:s.color+'22',
+            borderWidth:2, tension:0.3, fill:true, pointRadius:3,
+          }]},
+          options: miniChartOptions(c=>`¥${c.raw.toLocaleString()}`)
+        });
       });
     }
+
+    renderProductChart();
+  }
+
+  function renderProductChart() {
+    if (productChartInstance) { productChartInstance.destroy(); productChartInstance = null; }
+    const el = document.getElementById('productChart');
+    if (!el || records.length === 0) return;
+    const products = [...new Set(records.map(r=>r.product))]
+      .map(p => ({ p, amt: records.filter(r=>r.product===p).reduce((s,r)=>s+r.amount,0) }))
+      .sort((a,b) => b.amt - a.amt);
+    productChartInstance = new Chart(el.getContext('2d'), {
+      type: 'doughnut',
+      data: { labels:products.map(x=>x.p), datasets:[{ data:products.map(x=>x.amt), backgroundColor:COLORS.slice(0,products.length), borderWidth:2 }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'bottom'}, tooltip:{callbacks:{label:c=>`${c.label}: ¥${c.raw.toLocaleString()}`}} } }
+    });
   }
 
   function renderHistory() {
