@@ -763,23 +763,25 @@
     if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
     if (records.length === 0) return;
     if (currentChartType === 'month') {
-      const now = new Date();
-      const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-      const prev = new Date(now.getFullYear(), now.getMonth()-1, 1);
-      const next = new Date(now.getFullYear(), now.getMonth()+1, 1);
-      const defaultMonths = new Set([fmt(prev), fmt(now), fmt(next)]);
-      const months = getMonths().filter(m => defaultMonths.has(m));
-      const products = [...new Set(records.map(r=>r.product))]
-        .sort((a,b) => records.filter(r=>r.product===b).reduce((s,r)=>s+r.amount,0) - records.filter(r=>r.product===a).reduce((s,r)=>s+r.amount,0));
-      const datasets = products.map((p,i) => ({
-        label: p,
-        data: months.map(m => records.filter(r=>r.product===p&&r.date.startsWith(m)).reduce((s,r)=>s+r.amount,0)),
-        backgroundColor: COLORS[i%COLORS.length]+'99',
-        borderColor: COLORS[i%COLORS.length],
-        borderWidth: 2, tension: 0.3, fill: false,
+      const months = getMonths();
+      const amtBy = (prod, m) => records.filter(r=>r.product===prod&&r.date===m).reduce((s,r)=>s+r.amount,0);
+      const totalBy = m => records.filter(r=>r.date===m).reduce((s,r)=>s+r.amount,0);
+      const series = [
+        { label: '売上合計',   color: '#4f46e5', data: months.map(m=>totalBy(m)) },
+        { label: 'VIEsauna',  color: '#2563eb', data: months.map(m=>amtBy('VIEsauna',m)) },
+        { label: 'テントサウナ', color: '#0891b2', data: months.map(m=>amtBy('テントサウナ',m)) },
+        { label: 'Cafe',      color: '#16a34a', data: months.map(m=>amtBy('Cafe',m)) },
+        { label: 'ColÄ',     color: '#be185d', data: months.map(m=>amtBy('ColÄ',m)) },
+      ];
+      const datasets = series.map(s => ({
+        label: s.label,
+        data: s.data,
+        borderColor: s.color,
+        backgroundColor: s.color + '22',
+        borderWidth: 2, tension: 0.3, fill: false, pointRadius: 3,
       }));
       chartInstance = new Chart(ctx, {
-        type: products.length<=3?'line':'bar',
+        type: 'line',
         data: { labels: months.map(m=>m.replace('-','年')+'月'), datasets },
         options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{position:'bottom'}, tooltip:{callbacks:{label:c=>`${c.dataset.label}: ¥${c.raw.toLocaleString()}`}} }, scales:{ y:{beginAtZero:true,ticks:{callback:v=>'¥'+v.toLocaleString()}} } }
       });
