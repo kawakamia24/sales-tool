@@ -705,10 +705,10 @@
       return `<div class="yoy-row"><span class="yoy-last">昨年 ${prev} 件</span>${badge(cur, prev)}</div>`;
     }
     function projAmtRow(val) {
-      return `<div class="proj-row"><span class="proj-label">着地予想（${elapsedDays}/${totalDays}日）</span><span class="proj-val">¥${proj(val).toLocaleString()}</span></div>`;
+      return `<div class="proj-row"><span class="proj-label">着地予想</span><span class="proj-val">¥${proj(val).toLocaleString()}</span></div>`;
     }
     function projCntRow(val) {
-      return `<div class="proj-row"><span class="proj-label">着地予想（${elapsedDays}/${totalDays}日）</span><span class="proj-val">${proj(val)} 件</span></div>`;
+      return `<div class="proj-row"><span class="proj-label">着地予想</span><span class="proj-val">${proj(val)} 件</span></div>`;
     }
 
     document.getElementById('analysis-summary-grid').innerHTML = `
