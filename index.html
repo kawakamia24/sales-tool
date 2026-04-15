@@ -227,6 +227,10 @@
       <div class="summary-grid" id="analysis-summary-grid"></div>
     </div>
     <div class="card">
+      <div class="analysis-section-title">稼働率</div>
+      <div id="occupancy-card"></div>
+    </div>
+    <div class="card">
       <h2>売上グラフ</h2>
       <div class="tab-row">
         <button class="tab-btn active" onclick="switchChart('yoy', this)">昨年比較</button>
@@ -874,10 +878,91 @@
   }
   window.showToast = showToast;
 
+  // ============================================================
+  // 稼働率
+  // ============================================================
+  const JP_HOLIDAYS = new Set([
+    // 2024
+    '2024-01-01','2024-01-08','2024-02-11','2024-02-12','2024-02-23',
+    '2024-03-20','2024-04-29','2024-05-03','2024-05-04','2024-05-05','2024-05-06',
+    '2024-07-15','2024-08-11','2024-08-12','2024-09-16','2024-09-22','2024-09-23',
+    '2024-10-14','2024-11-03','2024-11-04','2024-11-23',
+    // 2025
+    '2025-01-01','2025-01-13','2025-02-11','2025-02-23','2025-02-24',
+    '2025-03-20','2025-04-29','2025-05-03','2025-05-04','2025-05-05','2025-05-06',
+    '2025-07-21','2025-08-11','2025-09-15','2025-09-23',
+    '2025-10-13','2025-11-03','2025-11-23','2025-11-24',
+    // 2026
+    '2026-01-01','2026-01-12','2026-02-11','2026-02-23',
+    '2026-03-20','2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-05-06',
+    '2026-07-20','2026-08-11','2026-09-21','2026-09-22','2026-09-23',
+    '2026-10-12','2026-11-03','2026-11-23',
+  ]);
+
+  function calcMonthSlots(yearMonth) {
+    const [y, m] = yearMonth.split('-').map(Number);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const isSummer = m >= 7 && m <= 9;
+    let vieSlots = 0, tentSlots = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dow = new Date(y, m-1, d).getDay(); // 0=日,5=金,6=土
+      const ds  = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const isHoliday = JP_HOLIDAYS.has(ds);
+      if (dow === 5 && !isHoliday) continue; // 金曜定休（祝日除く）
+      const isWeekendOrHoliday = dow === 0 || dow === 6 || isHoliday;
+      if (isWeekendOrHoliday) {
+        vieSlots  += 3;
+        tentSlots += isSummer ? 4 : 3;
+      } else {
+        vieSlots  += 2;
+        tentSlots += 2;
+      }
+    }
+    return { vieSlots, tentSlots };
+  }
+
+  function renderOccupancy() {
+    const el = document.getElementById('occupancy-card');
+    if (!el) return;
+    const ym = new Date().toISOString().slice(0, 7);
+    const { vieSlots, tentSlots } = calcMonthSlots(ym);
+    const totalSlots = vieSlots + tentSlots;
+    const vieCount  = records.filter(r=>r.date===ym&&r.product==='VIEsauna').reduce((s,r)=>s+(r.count||0),0);
+    const tentCount = records.filter(r=>r.date===ym&&r.product==='テントサウナ').reduce((s,r)=>s+(r.count||0),0);
+    const totalCount = vieCount + tentCount;
+
+    const pct = (a, b) => b > 0 ? Math.round(a / b * 100) : 0;
+    const barColor = p => p >= 80 ? '#10b981' : p >= 50 ? '#f59e0b' : '#94a3b8';
+    const bar = p => `<div style="height:7px;background:#e2e8f0;border-radius:4px;margin:7px 0 4px;overflow:hidden;"><div style="height:100%;width:${p}%;background:${barColor(p)};border-radius:4px;"></div></div>`;
+    const item = (label, count, slots) => {
+      const p = pct(count, slots);
+      return `<div style="padding:14px;background:#f8fafc;border-radius:14px;border:1px solid #e2e8f0;">
+        <div style="font-size:0.68rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">${label}</div>
+        <div style="font-size:1.3rem;font-weight:800;color:#1e293b;">${p}%</div>
+        ${bar(p)}
+        <div style="font-size:0.72rem;color:#64748b;">${count} 件 / ${slots} 枠</div>
+      </div>`;
+    };
+
+    const tp = pct(totalCount, totalSlots);
+    const tc = barColor(tp);
+    el.innerHTML = `
+      <div style="background:linear-gradient(135deg,${tc},${tc}bb);border-radius:14px;padding:16px;margin-bottom:12px;color:white;text-align:center;">
+        <div style="font-size:0.68rem;font-weight:700;opacity:0.8;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">合計稼働率</div>
+        <div style="font-size:2rem;font-weight:800;">${tp}%</div>
+        <div style="font-size:0.78rem;opacity:0.8;margin-top:4px;">${totalCount} 件 / ${totalSlots} 枠</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        ${item('VIEsauna', vieCount, vieSlots)}
+        ${item('テントサウナ', tentCount, tentSlots)}
+      </div>`;
+  }
+
   function refresh() {
     updateMonthFilter();
     renderTable();
     renderSummary();
+    renderOccupancy();
     renderChart();
     renderHistory();
     renderColaStores();
