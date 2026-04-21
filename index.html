@@ -1200,7 +1200,6 @@
         const br = bounceMap[ym] != null ? (bounceMap[ym] * 100).toFixed(1) + '%' : '—';
         return mkMonthBlock(ym, [
           [gv(sessMap, ym).toLocaleString(),   'セッション',   'var(--primary)'],
-          [gv(igMap, ym).toLocaleString(),      'Instagram',   ''],
           [gv(orgMap, ym).toLocaleString(),     '検索流入',     ''],
           [gv(resMap, ym).toLocaleString(),     '予約ページ到達', ''],
           [br,                                  '離脱率',       bounceMap[ym] > 0.5 ? 'var(--red)' : ''],
