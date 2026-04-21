@@ -1063,33 +1063,22 @@
         },
       });
 
-      // 上位キーワード + Firestoreメモ
-      const kwSnap = await getDocs(collection(db, 'sc_keyword_notes'));
-      const memos  = {};
-      kwSnap.forEach(d => { memos[d.id] = d.data().note || ''; });
-
+      // 上位キーワード
       const kwEl = document.getElementById('sc-keywords');
       kwEl.innerHTML = (kwData.rows || []).map((kw, i) => {
         const key  = kw.keys[0];
         const kCtr = kw.impressions > 0 ? (kw.clicks / kw.impressions * 100).toFixed(1) : '0.0';
-        return `<div style="padding:10px 0;border-bottom:1px solid var(--surface);">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:7px;">
-            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-              <span style="width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:0.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i + 1}</span>
-              <span style="font-size:0.83rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(key)}</span>
-            </div>
-            <div style="display:flex;gap:10px;flex-shrink:0;font-size:0.72rem;color:var(--text-2);text-align:right;">
-              <span>${fmtK(kw.impressions)}<br><span style="color:var(--text-3);font-size:0.6rem;">表示</span></span>
-              <span>${kw.clicks}<br><span style="color:var(--text-3);font-size:0.6rem;">クリック</span></span>
-              <span>${kCtr}%<br><span style="color:var(--text-3);font-size:0.6rem;">CTR</span></span>
-              <span>#${kw.position.toFixed(1)}<br><span style="color:var(--text-3);font-size:0.6rem;">順位</span></span>
-            </div>
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--surface);display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+            <span style="width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:0.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i + 1}</span>
+            <span style="font-size:0.83rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(key)}</span>
           </div>
-          <input type="text" placeholder="メモを追加..."
-            value="${escHtml(memos[key] || '')}"
-            data-kw="${escHtml(key)}"
-            onchange="saveKwMemo(this.dataset.kw, this.value)"
-            style="width:100%;font-size:0.78rem;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-family:inherit;outline:none;" />
+          <div style="display:flex;gap:10px;flex-shrink:0;font-size:0.72rem;color:var(--text-2);text-align:right;">
+            <span>${fmtK(kw.impressions)}<br><span style="color:var(--text-3);font-size:0.6rem;">表示</span></span>
+            <span>${kw.clicks}<br><span style="color:var(--text-3);font-size:0.6rem;">クリック</span></span>
+            <span>${kCtr}%<br><span style="color:var(--text-3);font-size:0.6rem;">CTR</span></span>
+            <span>#${kw.position.toFixed(1)}<br><span style="color:var(--text-3);font-size:0.6rem;">順位</span></span>
+          </div>
         </div>`;
       }).join('');
 
@@ -1101,15 +1090,6 @@
       if (!gToken) { document.getElementById('marketing-auth-card').style.display = 'block'; card.style.display = 'none'; }
     }
   }
-
-  window.saveKwMemo = async function(keyword, note) {
-    try {
-      await setDoc(doc(db, 'sc_keyword_notes', keyword), { note }, { merge: true });
-      showToast('メモを保存しました');
-    } catch(e) {
-      showToast('保存に失敗しました');
-    }
-  };
 
   // ============================================================
   // GA4
