@@ -865,11 +865,6 @@
       errEl.style.display = 'block';
       return;
     }
-    if (G_CLIENT_ID === 'YOUR_GOOGLE_OAUTH_CLIENT_ID') {
-      errEl.textContent = 'G_CLIENT_ID が未設定です。index.html の G_CLIENT_ID を Google Cloud Console のクライアント ID に変更してください。';
-      errEl.style.display = 'block';
-      return;
-    }
     if (!gTokenClient) {
       gTokenClient = google.accounts.oauth2.initTokenClient({
         client_id: G_CLIENT_ID,
