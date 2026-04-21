@@ -317,11 +317,17 @@
         <!-- 直近3ヶ月比較 -->
         <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">直近3ヶ月</div>
         <div id="sc-month-compare" style="display:flex;gap:8px;margin-bottom:20px;"></div>
+        <!-- 期間選択 -->
+        <div style="display:flex;gap:6px;margin-bottom:16px;">
+          <button id="sc-per-6"  onclick="setSCPeriod(6)"  style="font-size:0.72rem;padding:4px 10px;border-radius:8px;border:1.5px solid var(--primary);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;cursor:pointer;">6ヶ月</button>
+          <button id="sc-per-12" onclick="setSCPeriod(12)" style="font-size:0.72rem;padding:4px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;">1年</button>
+          <button id="sc-per-24" onclick="setSCPeriod(24)" style="font-size:0.72rem;padding:4px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;">2年</button>
+        </div>
         <!-- 表示回数・クリック・CTR チャート -->
-        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">表示回数 / クリック / CTR（過去6ヶ月）</div>
+        <div id="sc-chart-label" style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">表示回数 / クリック / CTR（過去6ヶ月）</div>
         <div style="position:relative;height:220px;"><canvas id="sc-chart"></canvas></div>
         <!-- 平均掲載順位チャート -->
-        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 4px;">平均掲載順位（過去6ヶ月）</div>
+        <div id="sc-pos-label" style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 4px;">平均掲載順位（過去6ヶ月）</div>
         <div style="font-size:0.62rem;color:var(--text-3);margin-bottom:8px;">グラフ上部ほど上位（数値が小さいほど良）</div>
         <div style="position:relative;height:180px;"><canvas id="sc-pos-chart"></canvas></div>
         <!-- 上位キーワード -->
@@ -881,6 +887,9 @@
   let gTokenClient = null;
   const mCharts = {};
 
+  let scByMonth   = {};
+  let scAllMonths = [];
+
   window.requestGoogleToken = function() {
     const errEl = document.getElementById('marketing-error');
     errEl.style.display = 'none';
@@ -959,6 +968,65 @@
   // ============================================================
   // Search Console
   // ============================================================
+  function renderSCCharts(n) {
+    const label   = n === 24 ? '過去2年' : n === 12 ? '過去1年' : '過去6ヶ月';
+    const on  = 'font-size:0.72rem;padding:4px 10px;border-radius:8px;border:1.5px solid var(--primary);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;cursor:pointer;';
+    const off = 'font-size:0.72rem;padding:4px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;';
+    document.getElementById('sc-per-6').style.cssText  = n === 6  ? on : off;
+    document.getElementById('sc-per-12').style.cssText = n === 12 ? on : off;
+    document.getElementById('sc-per-24').style.cssText = n === 24 ? on : off;
+    document.getElementById('sc-chart-label').textContent = `表示回数 / クリック / CTR（${label}）`;
+    document.getElementById('sc-pos-label').textContent   = `平均掲載順位（${label}）`;
+
+    const slice  = scAllMonths.slice(-n);
+    const fmtYM  = ym => `${ym.slice(0, 4)}/${ym.slice(4, 6)}`;
+    const ctr    = ym => scByMonth[ym].imp > 0 ? (scByMonth[ym].clicks / scByMonth[ym].imp * 100).toFixed(1) : '0.0';
+
+    if (mCharts.sc) mCharts.sc.destroy();
+    mCharts.sc = new Chart(document.getElementById('sc-chart').getContext('2d'), {
+      data: {
+        labels: slice.map(fmtYM),
+        datasets: [
+          { type: 'bar',  label: '表示回数',  data: slice.map(ym => scByMonth[ym].imp),    backgroundColor: 'rgba(44,74,62,.45)',  borderColor: '#2C4A3E', borderWidth: 1.5, yAxisID: 'y' },
+          { type: 'bar',  label: 'クリック数', data: slice.map(ym => scByMonth[ym].clicks), backgroundColor: 'rgba(184,122,80,.5)', borderColor: '#B87A50', borderWidth: 1.5, yAxisID: 'y' },
+          { type: 'line', label: 'CTR(%)',    data: slice.map(ym => +(ctr(ym))),            borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,.08)', borderWidth: 2, fill: false, tension: 0.3, yAxisID: 'y1' },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
+        scales: {
+          y:  { beginAtZero: true, position: 'left',  ticks: { font: { size: 9 }, maxTicksLimit: 5 } },
+          y1: { beginAtZero: true, position: 'right', ticks: { font: { size: 9 }, maxTicksLimit: 5, callback: v => v + '%' }, grid: { drawOnChartArea: false } },
+        },
+      },
+    });
+
+    if (mCharts.scPos) mCharts.scPos.destroy();
+    mCharts.scPos = new Chart(document.getElementById('sc-pos-chart').getContext('2d'), {
+      type: 'line',
+      data: {
+        labels: slice.map(fmtYM),
+        datasets: [{
+          label: '平均掲載順位',
+          data: slice.map(ym => scByMonth[ym].posCnt > 0 ? +(scByMonth[ym].posSum / scByMonth[ym].posCnt).toFixed(1) : null),
+          borderColor: '#0891b2', backgroundColor: 'rgba(8,145,178,.12)',
+          borderWidth: 2.5, fill: true, tension: 0.35, spanGaps: true, pointRadius: 3, pointBackgroundColor: '#0891b2',
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } },
+          tooltip: { callbacks: { label: ctx => `掲載順位 #${ctx.parsed.y}` } },
+        },
+        scales: { y: { reverse: true, ticks: { font: { size: 9 }, maxTicksLimit: 5, callback: v => '#' + v } } },
+      },
+    });
+  }
+
+  window.setSCPeriod = function(n) { renderSCCharts(n); };
+
   async function loadSC() {
     const card    = document.getElementById('sc-card');
     const loadEl  = document.getElementById('sc-loading');
@@ -970,10 +1038,10 @@
     content.style.display = 'none';
     try {
       const [dailyData, kwData] = await Promise.all([
-        // 日別データ（6ヶ月分）→ JS側で月集計
+        // 日別データ（2年分）→ JS側で月集計・期間はトグルで切替
         gFetch(
           `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(SC_SITE)}/searchAnalytics/query`,
-          { method: 'POST', body: JSON.stringify({ startDate: dateMonthsAgo(6), endDate: dateMinus(1), dimensions: ['date'], rowLimit: 500 }) }
+          { method: 'POST', body: JSON.stringify({ startDate: dateMonthsAgo(24), endDate: dateMinus(1), dimensions: ['date'], rowLimit: 1000 }) }
         ),
         // 上位キーワード（直近3ヶ月）
         gFetch(
@@ -982,86 +1050,32 @@
         ),
       ]);
 
-      // 日別 → 月別集計
-      const byMonth = {};
+      // 日別 → 月別集計（モジュール変数に保存）
+      scByMonth = {};
       for (const row of (dailyData.rows || [])) {
         const ym = row.keys[0].replace(/-/g, '').slice(0, 6);
-        if (!byMonth[ym]) byMonth[ym] = { imp: 0, clicks: 0, posSum: 0, posCnt: 0 };
-        byMonth[ym].imp    += row.impressions;
-        byMonth[ym].clicks += row.clicks;
-        byMonth[ym].posSum += row.position;
-        byMonth[ym].posCnt++;
+        if (!scByMonth[ym]) scByMonth[ym] = { imp: 0, clicks: 0, posSum: 0, posCnt: 0 };
+        scByMonth[ym].imp    += row.impressions;
+        scByMonth[ym].clicks += row.clicks;
+        scByMonth[ym].posSum += row.position;
+        scByMonth[ym].posCnt++;
       }
-      const months = Object.keys(byMonth).sort();
-      const last6  = months.slice(-6);
-      const last3  = last6.slice(-3);
-      const fmtYM  = ym => `${ym.slice(0, 4)}/${ym.slice(4, 6)}`;
-      const ctr    = ym => byMonth[ym].imp > 0 ? (byMonth[ym].clicks / byMonth[ym].imp * 100).toFixed(1) : '0.0';
-      const pos    = ym => byMonth[ym].posCnt > 0 ? (byMonth[ym].posSum / byMonth[ym].posCnt).toFixed(1) : '—';
+      scAllMonths = Object.keys(scByMonth).sort();
 
-      // 直近3ヶ月カード
+      const last3 = scAllMonths.slice(-3);
+      const ctr   = ym => scByMonth[ym].imp > 0 ? (scByMonth[ym].clicks / scByMonth[ym].imp * 100).toFixed(1) : '0.0';
+      const pos   = ym => scByMonth[ym].posCnt > 0 ? (scByMonth[ym].posSum / scByMonth[ym].posCnt).toFixed(1) : '—';
+
+      // 直近3ヶ月カード（常に固定）
       document.getElementById('sc-month-compare').innerHTML = last3.map(ym => mkMonthBlock(ym, [
-        [fmtK(byMonth[ym].imp),    '表示回数', 'var(--primary)'],
-        [byMonth[ym].clicks.toLocaleString(), 'クリック数', ''],
-        [ctr(ym) + '%',            'CTR',      'var(--accent)'],
-        ['#' + pos(ym),            '平均順位',  ''],
+        [fmtK(scByMonth[ym].imp),    '表示回数', 'var(--primary)'],
+        [scByMonth[ym].clicks.toLocaleString(), 'クリック数', ''],
+        [ctr(ym) + '%',              'CTR',      'var(--accent)'],
+        ['#' + pos(ym),              '平均順位',  ''],
       ])).join('');
 
-      // 月別グラフ
-      if (mCharts.sc) mCharts.sc.destroy();
-      mCharts.sc = new Chart(document.getElementById('sc-chart').getContext('2d'), {
-        data: {
-          labels: last6.map(fmtYM),
-          datasets: [
-            { type: 'bar',  label: '表示回数',  data: last6.map(ym => byMonth[ym].imp),    backgroundColor: 'rgba(44,74,62,.45)',  borderColor: '#2C4A3E', borderWidth: 1.5, yAxisID: 'y' },
-            { type: 'bar',  label: 'クリック数', data: last6.map(ym => byMonth[ym].clicks), backgroundColor: 'rgba(184,122,80,.5)', borderColor: '#B87A50', borderWidth: 1.5, yAxisID: 'y' },
-            { type: 'line', label: 'CTR(%)',    data: last6.map(ym => +(ctr(ym))),          borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,.08)', borderWidth: 2, fill: false, tension: 0.3, yAxisID: 'y1' },
-          ],
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
-          scales: {
-            y:  { beginAtZero: true, position: 'left',  ticks: { font: { size: 9 }, maxTicksLimit: 5 } },
-            y1: { beginAtZero: true, position: 'right', ticks: { font: { size: 9 }, maxTicksLimit: 5, callback: v => v + '%' }, grid: { drawOnChartArea: false } },
-          },
-        },
-      });
-
-      // 平均掲載順位グラフ（逆軸: 上位ほど上）
-      if (mCharts.scPos) mCharts.scPos.destroy();
-      mCharts.scPos = new Chart(document.getElementById('sc-pos-chart').getContext('2d'), {
-        type: 'line',
-        data: {
-          labels: last6.map(fmtYM),
-          datasets: [{
-            label: '平均掲載順位',
-            data: last6.map(ym => byMonth[ym].posCnt > 0 ? +(byMonth[ym].posSum / byMonth[ym].posCnt).toFixed(1) : null),
-            borderColor: '#0891b2',
-            backgroundColor: 'rgba(8,145,178,.12)',
-            borderWidth: 2.5,
-            fill: true,
-            tension: 0.35,
-            spanGaps: true,
-            pointRadius: 4,
-            pointBackgroundColor: '#0891b2',
-          }],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } },
-            tooltip: { callbacks: { label: ctx => `掲載順位 #${ctx.parsed.y}` } },
-          },
-          scales: {
-            y: {
-              reverse: true,
-              ticks: { font: { size: 9 }, maxTicksLimit: 5, callback: v => '#' + v },
-            },
-          },
-        },
-      });
+      // 初期表示：過去6ヶ月
+      renderSCCharts(6);
 
       // 上位キーワード
       const kwEl = document.getElementById('sc-keywords');
