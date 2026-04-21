@@ -347,7 +347,7 @@
         <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">直近3ヶ月</div>
         <div id="ga4-month-compare" style="display:flex;gap:8px;margin-bottom:20px;"></div>
         <!-- 予約ページチャート -->
-        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px;">予約ページ（過去6ヶ月）</div>
+        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px;">セッション数 / 予約クリック数（過去6ヶ月）</div>
         <div style="position:relative;height:200px;"><canvas id="ga4-reserve-chart"></canvas></div>
         <!-- 参照元/メディア分布 -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:24px;margin-bottom:10px;">
@@ -1205,6 +1205,8 @@
         data: {
           labels: last6.map(fmtYM),
           datasets: [
+            { type: 'bar',  label: 'セッション数', data: last6.map(ym => gv(sessMap, ym)),
+              backgroundColor: 'rgba(44,74,62,.35)', borderColor: '#2C4A3E', borderWidth: 1.5, yAxisID: 'y' },
             { type: 'bar',  label: '予約クリック数', data: last6.map(ym => gv(resMap, ym)),
               backgroundColor: 'rgba(184,122,80,.5)', borderColor: '#B87A50', borderWidth: 1.5, yAxisID: 'y' },
             { type: 'line', label: '予約CTR(%)',
