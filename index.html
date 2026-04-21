@@ -1010,7 +1010,26 @@
     card.style.display = 'block';
     sumEl.innerHTML = '<p class="loading">読み込み中...</p>';
     try {
-      const data = await gFetch(`https://forms.googleapis.com/v1/forms/${FORM_ID}/responses?pageSize=100`);
+      let res;
+      try {
+        res = await fetch(`https://forms.googleapis.com/v1/forms/${FORM_ID}/responses?pageSize=100`, {
+          headers: { 'Authorization': `Bearer ${gToken}` }
+        });
+      } catch(e) {
+        throw e;
+      }
+      if (res.status === 403) {
+        sumEl.innerHTML = `<div style="font-size:0.84rem;color:var(--text-2);padding:8px 0;line-height:1.8;">
+          アクセス拒否（403）。以下を確認してください：<br>
+          ① <strong>Google Cloud Console</strong> で「<strong>Google Forms API</strong>」を有効化<br>
+          ② このフォームの所有者アカウントでログインしていること<br>
+          ③ OAuth 同意画面のスコープに <code>forms.responses.readonly</code> が含まれること
+        </div>`;
+        listEl.innerHTML = '';
+        return;
+      }
+      if (!res.ok) throw new Error(`API エラー ${res.status}`);
+      const data = await res.json();
       const responses = (data.responses || []).sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
       const thisMonth  = new Date().toISOString().slice(0, 7);
       const monthCount = responses.filter(r => r.createTime.startsWith(thisMonth)).length;
