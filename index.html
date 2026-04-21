@@ -1205,11 +1205,15 @@
         const bookCnt = getCnt(mRecs, 'VIEsauna') + getCnt(mRecs, 'テントサウナ');
         const clicks  = gv(ga4Maps.res, ym);
         const s       = gv(ga4Maps.sess, ym);
-        const ctr     = s > 0 ? (clicks / s * 100).toFixed(1) + '%' : '—';
-        const cvr     = clicks > 0 ? (bookCnt / clicks * 100).toFixed(1) + '%' : '—';
+        const ctrVal  = s > 0 ? clicks / s * 100 : null;
+        const cvrVal  = clicks > 0 ? bookCnt / clicks * 100 : null;
+        const ctr     = ctrVal != null ? ctrVal.toFixed(1) + '%' : '—';
+        const cvr     = cvrVal != null ? cvrVal.toFixed(1) + '%' : '—';
+        const ctrCol  = ctrVal == null ? '' : ctrVal >= 30 ? '#16a34a' : ctrVal >= 20 ? '#f59e0b' : 'var(--red)';
+        const cvrCol  = cvrVal == null ? '' : cvrVal >= 6  ? '#16a34a' : cvrVal >= 3  ? '#f59e0b' : 'var(--red)';
         return mkMonthBlock(ym, [
-          [ctr,  '予約CTR',    'var(--primary)'],
-          [cvr,  'クリック転換率', clicks > 0 && bookCnt / clicks >= 0.3 ? '#B87A50' : ''],
+          [ctr, '予約CTR',     ctrCol],
+          [cvr, 'クリック転換率', cvrCol],
           [s.toLocaleString(),      'セッション',   ''],
           [clicks.toLocaleString(), '予約クリック数', ''],
         ]);
