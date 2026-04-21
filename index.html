@@ -297,30 +297,65 @@
 <!-- ========== 集客ページ ========== -->
 <div class="page" id="page-marketing">
   <div class="container">
+
+    <!-- 認証カード -->
     <div class="card" id="marketing-auth-card">
       <div class="analysis-section-title">Google 連携</div>
       <p style="font-size:0.88rem;color:var(--text-2);margin-bottom:16px;line-height:1.6;">Search Console・GA4・お問い合わせフォームのデータを表示するには Google アカウントとの連携が必要です。</p>
       <button class="btn-add" onclick="requestGoogleToken()">Google と連携する</button>
       <p id="marketing-error" style="display:none;margin-top:12px;font-size:0.82rem;color:var(--red);text-align:center;"></p>
     </div>
+
+    <!-- Search Console カード -->
     <div class="card" id="sc-card" style="display:none">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <div class="analysis-section-title" style="margin-bottom:0;">Search Console <span style="font-weight:400;font-size:0.7rem;opacity:.7;">（過去28日）</span></div>
+        <div class="analysis-section-title" style="margin-bottom:0;">Search Console <span style="font-weight:400;font-size:0.7rem;opacity:.7;">（月別）</span></div>
         <button onclick="reloadMarketingData()" style="font-size:0.75rem;color:var(--text-3);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-family:inherit;font-weight:600;">再読込</button>
       </div>
-      <div class="summary-grid" id="sc-summary"></div>
-      <div style="position:relative;height:220px;margin-top:16px;"><canvas id="sc-chart"></canvas></div>
+      <div id="sc-loading" style="font-size:0.84rem;color:var(--text-3);padding:8px 0;">読み込み中...</div>
+      <div id="sc-content" style="display:none">
+        <!-- 直近3ヶ月比較 -->
+        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">直近3ヶ月</div>
+        <div id="sc-month-compare" style="display:flex;gap:8px;margin-bottom:20px;"></div>
+        <!-- 表示回数・クリック・CTR チャート -->
+        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">表示回数 / クリック / CTR（過去6ヶ月）</div>
+        <div style="position:relative;height:220px;"><canvas id="sc-chart"></canvas></div>
+        <!-- 平均掲載順位チャート -->
+        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 4px;">平均掲載順位（過去6ヶ月）</div>
+        <div style="font-size:0.62rem;color:var(--text-3);margin-bottom:8px;">グラフ上部ほど上位（数値が小さいほど良）</div>
+        <div style="position:relative;height:180px;"><canvas id="sc-pos-chart"></canvas></div>
+        <!-- 上位キーワード -->
+        <div style="margin-top:20px;">
+          <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;">上位キーワード（直近3ヶ月）</div>
+          <div id="sc-keywords"></div>
+        </div>
+      </div>
     </div>
+
+    <!-- GA4 カード -->
     <div class="card" id="ga4-card" style="display:none">
-      <div class="analysis-section-title">Google Analytics <span style="font-weight:400;font-size:0.7rem;opacity:.7;">（過去28日）</span></div>
-      <div class="summary-grid" id="ga4-summary"></div>
-      <div style="position:relative;height:220px;margin-top:16px;"><canvas id="ga4-chart"></canvas></div>
+      <div class="analysis-section-title">Google Analytics <span style="font-weight:400;font-size:0.7rem;opacity:.7;">（月別）</span></div>
+      <div id="ga4-loading" style="font-size:0.84rem;color:var(--text-3);padding:8px 0;">読み込み中...</div>
+      <div id="ga4-content" style="display:none">
+        <!-- 直近3ヶ月比較 -->
+        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">直近3ヶ月</div>
+        <div id="ga4-month-compare" style="display:flex;gap:8px;margin-bottom:20px;"></div>
+        <!-- 流入元チャート -->
+        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">流入元別推移（過去6ヶ月）</div>
+        <div style="position:relative;height:220px;"><canvas id="ga4-chart"></canvas></div>
+        <!-- 予約ページチャート -->
+        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px;">予約ページ（過去6ヶ月）</div>
+        <div style="position:relative;height:200px;"><canvas id="ga4-reserve-chart"></canvas></div>
+      </div>
     </div>
+
+    <!-- お問い合わせフォームカード -->
     <div class="card" id="forms-card" style="display:none">
       <div class="analysis-section-title">お問い合わせフォーム</div>
       <div class="summary-grid" id="forms-summary"></div>
       <div id="forms-list"></div>
     </div>
+
   </div>
 </div>
 
@@ -361,7 +396,7 @@
 <!-- ========== メインスクリプト（認証 + Firestore を1つにまとめた） ========== -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   // ============================================================
@@ -844,11 +879,7 @@
   // ============================================================
   // 集客 (Search Console + GA4 + Google Forms)
   // ============================================================
-  // ★ Google Cloud Console で作成した OAuth 2.0 クライアント ID を設定してください
-  // 許可するオリジン: https://kawakamia24.github.io
-  // 許可するリダイレクト URI: 不要（暗黙的フロー）
   const G_CLIENT_ID = '851214410876-15tkiuqsdnup46tqookr2qht15j8b5r8.apps.googleusercontent.com';
-
   const SC_SITE      = 'https://viehattava.com/';
   const GA4_PROPERTY = '451193305';
   const FORM_ID      = '16FizQa__bG5yvueGniJV_iJcqBRcqFNu7SZbEnLPwqw';
@@ -896,6 +927,12 @@
     return d.toISOString().slice(0, 10);
   }
 
+  function dateMonthsAgo(months) {
+    const d = new Date();
+    d.setMonth(d.getMonth() - months);
+    return d.toISOString().slice(0, 10);
+  }
+
   async function gFetch(url, opts = {}) {
     const res = await fetch(url, {
       ...opts,
@@ -910,35 +947,83 @@
     await Promise.allSettled([loadSC(), loadGA4(), loadForms()]);
   }
 
+  // ---- 共通ヘルパー ----
+  function fmtK(n) {
+    if (n >= 10000) return (n / 1000).toFixed(1) + 'K';
+    return n.toLocaleString();
+  }
+
+  function mkMonthBlock(ym, rows) {
+    const label = `${ym.slice(0, 4)}/${ym.slice(4, 6)}`;
+    return `<div style="flex:1;min-width:85px;background:var(--surface);border-radius:10px;padding:10px 8px;text-align:center;">
+      <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);margin-bottom:8px;">${label}</div>
+      ${rows.map(([val, lbl, color]) => `
+        <div style="font-size:${val.length > 5 ? '0.82' : '0.95'}rem;font-weight:700;color:${color || 'var(--text)'};">${val}</div>
+        <div style="font-size:0.6rem;color:var(--text-3);margin-bottom:5px;">${lbl}</div>
+      `).join('')}
+    </div>`;
+  }
+
+  // ============================================================
+  // Search Console
+  // ============================================================
   async function loadSC() {
-    const card = document.getElementById('sc-card');
-    const sumEl = document.getElementById('sc-summary');
+    const card    = document.getElementById('sc-card');
+    const loadEl  = document.getElementById('sc-loading');
+    const content = document.getElementById('sc-content');
     card.style.display = 'block';
-    sumEl.innerHTML = '<p class="loading">読み込み中...</p>';
+    loadEl.style.display = 'block';
+    loadEl.style.color = 'var(--text-3)';
+    loadEl.textContent = '読み込み中...';
+    content.style.display = 'none';
     try {
-      const data = await gFetch(
-        `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(SC_SITE)}/searchAnalytics/query`,
-        { method: 'POST', body: JSON.stringify({ startDate: dateMinus(28), endDate: dateMinus(1), dimensions: ['date'], rowLimit: 30 }) }
-      );
-      const rows = data.rows || [];
-      const totalImp    = rows.reduce((s, r) => s + r.impressions, 0);
-      const totalClicks = rows.reduce((s, r) => s + r.clicks, 0);
-      const avgCtr      = totalImp > 0 ? (totalClicks / totalImp * 100).toFixed(1) : '0.0';
-      const avgPos      = rows.length > 0 ? (rows.reduce((s, r) => s + r.position, 0) / rows.length).toFixed(1) : '—';
-      sumEl.innerHTML = `
-        <div class="summary-item main"><div class="s-label">表示回数</div><div class="s-val">${totalImp.toLocaleString()}</div></div>
-        <div class="summary-item"><div class="s-label">クリック数</div><div class="s-val">${totalClicks.toLocaleString()}</div></div>
-        <div class="summary-item"><div class="s-label">CTR</div><div class="s-val">${avgCtr}%</div></div>
-        <div class="summary-item"><div class="s-label">平均順位</div><div class="s-val">${avgPos}</div></div>`;
+      const [dailyData, kwData] = await Promise.all([
+        // 日別データ（6ヶ月分）→ JS側で月集計
+        gFetch(
+          `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(SC_SITE)}/searchAnalytics/query`,
+          { method: 'POST', body: JSON.stringify({ startDate: dateMonthsAgo(6), endDate: dateMinus(1), dimensions: ['date'], rowLimit: 500 }) }
+        ),
+        // 上位キーワード（直近3ヶ月）
+        gFetch(
+          `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(SC_SITE)}/searchAnalytics/query`,
+          { method: 'POST', body: JSON.stringify({ startDate: dateMonthsAgo(3), endDate: dateMinus(1), dimensions: ['query'], rowLimit: 10 }) }
+        ),
+      ]);
+
+      // 日別 → 月別集計
+      const byMonth = {};
+      for (const row of (dailyData.rows || [])) {
+        const ym = row.keys[0].replace(/-/g, '').slice(0, 6);
+        if (!byMonth[ym]) byMonth[ym] = { imp: 0, clicks: 0, posSum: 0, posCnt: 0 };
+        byMonth[ym].imp    += row.impressions;
+        byMonth[ym].clicks += row.clicks;
+        byMonth[ym].posSum += row.position;
+        byMonth[ym].posCnt++;
+      }
+      const months = Object.keys(byMonth).sort();
+      const last6  = months.slice(-6);
+      const last3  = last6.slice(-3);
+      const fmtYM  = ym => `${ym.slice(0, 4)}/${ym.slice(4, 6)}`;
+      const ctr    = ym => byMonth[ym].imp > 0 ? (byMonth[ym].clicks / byMonth[ym].imp * 100).toFixed(1) : '0.0';
+      const pos    = ym => byMonth[ym].posCnt > 0 ? (byMonth[ym].posSum / byMonth[ym].posCnt).toFixed(1) : '—';
+
+      // 直近3ヶ月カード
+      document.getElementById('sc-month-compare').innerHTML = last3.map(ym => mkMonthBlock(ym, [
+        [fmtK(byMonth[ym].imp),    '表示回数', 'var(--primary)'],
+        [byMonth[ym].clicks.toLocaleString(), 'クリック数', ''],
+        [ctr(ym) + '%',            'CTR',      'var(--accent)'],
+        ['#' + pos(ym),            '平均順位',  ''],
+      ])).join('');
+
+      // 月別グラフ
       if (mCharts.sc) mCharts.sc.destroy();
-      const ctx = document.getElementById('sc-chart').getContext('2d');
-      mCharts.sc = new Chart(ctx, {
-        type: 'line',
+      mCharts.sc = new Chart(document.getElementById('sc-chart').getContext('2d'), {
         data: {
-          labels: rows.map(r => r.keys[0].slice(5)),
+          labels: last6.map(fmtYM),
           datasets: [
-            { label: '表示回数', data: rows.map(r => r.impressions), borderColor: '#2C4A3E', backgroundColor: 'rgba(44,74,62,.1)', borderWidth: 2, fill: true, tension: 0.3, yAxisID: 'y' },
-            { label: 'クリック', data: rows.map(r => r.clicks),      borderColor: '#B87A50', backgroundColor: 'rgba(184,122,80,.1)', borderWidth: 2, fill: false, tension: 0.3, yAxisID: 'y1' },
+            { type: 'bar',  label: '表示回数',  data: last6.map(ym => byMonth[ym].imp),    backgroundColor: 'rgba(44,74,62,.45)',  borderColor: '#2C4A3E', borderWidth: 1.5, yAxisID: 'y' },
+            { type: 'bar',  label: 'クリック数', data: last6.map(ym => byMonth[ym].clicks), backgroundColor: 'rgba(184,122,80,.5)', borderColor: '#B87A50', borderWidth: 1.5, yAxisID: 'y' },
+            { type: 'line', label: 'CTR(%)',    data: last6.map(ym => +(ctr(ym))),          borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,.08)', borderWidth: 2, fill: false, tension: 0.3, yAxisID: 'y1' },
           ],
         },
         options: {
@@ -946,78 +1031,236 @@
           plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
           scales: {
             y:  { beginAtZero: true, position: 'left',  ticks: { font: { size: 9 }, maxTicksLimit: 5 } },
-            y1: { beginAtZero: true, position: 'right', ticks: { font: { size: 9 }, maxTicksLimit: 5 }, grid: { drawOnChartArea: false } },
+            y1: { beginAtZero: true, position: 'right', ticks: { font: { size: 9 }, maxTicksLimit: 5, callback: v => v + '%' }, grid: { drawOnChartArea: false } },
           },
         },
       });
+
+      // 平均掲載順位グラフ（逆軸: 上位ほど上）
+      if (mCharts.scPos) mCharts.scPos.destroy();
+      mCharts.scPos = new Chart(document.getElementById('sc-pos-chart').getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: last6.map(fmtYM),
+          datasets: [{
+            label: '平均掲載順位',
+            data: last6.map(ym => byMonth[ym].posCnt > 0 ? +(byMonth[ym].posSum / byMonth[ym].posCnt).toFixed(1) : null),
+            borderColor: '#0891b2',
+            backgroundColor: 'rgba(8,145,178,.12)',
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.35,
+            spanGaps: true,
+            pointRadius: 4,
+            pointBackgroundColor: '#0891b2',
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } },
+            tooltip: { callbacks: { label: ctx => `掲載順位 #${ctx.parsed.y}` } },
+          },
+          scales: {
+            y: {
+              reverse: true,
+              ticks: { font: { size: 9 }, maxTicksLimit: 5, callback: v => '#' + v },
+            },
+          },
+        },
+      });
+
+      // 上位キーワード + Firestoreメモ
+      const kwSnap = await getDocs(collection(db, 'sc_keyword_notes'));
+      const memos  = {};
+      kwSnap.forEach(d => { memos[d.id] = d.data().note || ''; });
+
+      const kwEl = document.getElementById('sc-keywords');
+      kwEl.innerHTML = (kwData.rows || []).map((kw, i) => {
+        const key  = kw.keys[0];
+        const kCtr = kw.impressions > 0 ? (kw.clicks / kw.impressions * 100).toFixed(1) : '0.0';
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--surface);">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:7px;">
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+              <span style="width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:0.6rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i + 1}</span>
+              <span style="font-size:0.83rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(key)}</span>
+            </div>
+            <div style="display:flex;gap:10px;flex-shrink:0;font-size:0.72rem;color:var(--text-2);text-align:right;">
+              <span>${fmtK(kw.impressions)}<br><span style="color:var(--text-3);font-size:0.6rem;">表示</span></span>
+              <span>${kw.clicks}<br><span style="color:var(--text-3);font-size:0.6rem;">クリック</span></span>
+              <span>${kCtr}%<br><span style="color:var(--text-3);font-size:0.6rem;">CTR</span></span>
+              <span>#${kw.position.toFixed(1)}<br><span style="color:var(--text-3);font-size:0.6rem;">順位</span></span>
+            </div>
+          </div>
+          <input type="text" placeholder="メモを追加..."
+            value="${escHtml(memos[key] || '')}"
+            data-kw="${escHtml(key)}"
+            onchange="saveKwMemo(this.dataset.kw, this.value)"
+            style="width:100%;font-size:0.78rem;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-family:inherit;outline:none;" />
+        </div>`;
+      }).join('');
+
+      loadEl.style.display = 'none';
+      content.style.display = 'block';
     } catch(e) {
-      sumEl.innerHTML = `<p style="color:var(--red);font-size:0.84rem;padding:8px 0;">${escHtml(e.message)}</p>`;
+      loadEl.textContent = e.message;
+      loadEl.style.color = 'var(--red)';
       if (!gToken) { document.getElementById('marketing-auth-card').style.display = 'block'; card.style.display = 'none'; }
     }
   }
 
-  async function loadGA4() {
-    const card = document.getElementById('ga4-card');
-    const sumEl = document.getElementById('ga4-summary');
-    card.style.display = 'block';
-    sumEl.innerHTML = '<p class="loading">読み込み中...</p>';
+  window.saveKwMemo = async function(keyword, note) {
     try {
-      const data = await gFetch(
-        `https://analyticsdata.googleapis.com/v1beta/properties/${GA4_PROPERTY}:runReport`,
-        { method: 'POST', body: JSON.stringify({
-          dateRanges: [{ startDate: dateMinus(28), endDate: dateMinus(1) }],
-          dimensions: [{ name: 'date' }],
-          metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'screenPageViews' }],
-          orderBys: [{ dimension: { dimensionName: 'date' } }],
-        })}
-      );
-      const rows = data.rows || [];
-      const v = (r, i) => parseInt(r.metricValues[i].value);
-      const totalSess = rows.reduce((s, r) => s + v(r, 0), 0);
-      const totalUser = rows.reduce((s, r) => s + v(r, 1), 0);
-      const totalPV   = rows.reduce((s, r) => s + v(r, 2), 0);
-      sumEl.innerHTML = `
-        <div class="summary-item main"><div class="s-label">セッション</div><div class="s-val">${totalSess.toLocaleString()}</div></div>
-        <div class="summary-item"><div class="s-label">ユーザー</div><div class="s-val">${totalUser.toLocaleString()}</div></div>
-        <div class="summary-item"><div class="s-label">ページビュー</div><div class="s-val">${totalPV.toLocaleString()}</div></div>`;
+      await setDoc(doc(db, 'sc_keyword_notes', keyword), { note }, { merge: true });
+      showToast('メモを保存しました');
+    } catch(e) {
+      showToast('保存に失敗しました');
+    }
+  };
+
+  // ============================================================
+  // GA4
+  // ============================================================
+  async function loadGA4() {
+    const card    = document.getElementById('ga4-card');
+    const loadEl  = document.getElementById('ga4-loading');
+    const content = document.getElementById('ga4-content');
+    card.style.display = 'block';
+    loadEl.style.display = 'block';
+    loadEl.style.color = 'var(--text-3)';
+    loadEl.textContent = '読み込み中...';
+    content.style.display = 'none';
+    try {
+      const GA4_URL  = `https://analyticsdata.googleapis.com/v1beta/properties/${GA4_PROPERTY}:runReport`;
+      const dateRng  = [{ startDate: '180daysAgo', endDate: 'yesterday' }];
+      const dimYM    = [{ name: 'yearMonth' }];
+      const orderYM  = [{ dimension: { dimensionName: 'yearMonth' } }];
+      const reserveFilter = { orGroup: { expressions: [
+        { filter: { fieldName: 'pagePath', stringFilter: { matchType: 'CONTAINS', value: '/reserve' } } },
+        { filter: { fieldName: 'pagePath', stringFilter: { matchType: 'CONTAINS', value: '/booking' } } },
+        { filter: { fieldName: 'pagePath', stringFilter: { matchType: 'CONTAINS', value: '/contact' } } },
+      ]}};
+
+      const [sessD, igD, orgD, resD, bounceD] = await Promise.all([
+        // 1. 総セッション数
+        gFetch(GA4_URL, { method: 'POST', body: JSON.stringify({ dateRanges: dateRng, dimensions: dimYM, metrics: [{ name: 'sessions' }], orderBys: orderYM }) }),
+        // 2. Instagram流入
+        gFetch(GA4_URL, { method: 'POST', body: JSON.stringify({ dateRanges: dateRng, dimensions: dimYM, metrics: [{ name: 'sessions' }], orderBys: orderYM,
+          dimensionFilter: { orGroup: { expressions: [
+            { filter: { fieldName: 'sessionSource', stringFilter: { matchType: 'CONTAINS', value: 'instagram' } } },
+            { filter: { fieldName: 'sessionMedium', stringFilter: { matchType: 'CONTAINS', value: 'instagram' } } },
+          ]}},
+        })}),
+        // 3. 検索流入（Google organic）
+        gFetch(GA4_URL, { method: 'POST', body: JSON.stringify({ dateRanges: dateRng, dimensions: dimYM, metrics: [{ name: 'sessions' }], orderBys: orderYM,
+          dimensionFilter: { andGroup: { expressions: [
+            { filter: { fieldName: 'sessionSource', stringFilter: { matchType: 'EXACT', value: 'google' } } },
+            { filter: { fieldName: 'sessionMedium', stringFilter: { matchType: 'EXACT', value: 'organic' } } },
+          ]}},
+        })}),
+        // 4. 予約ページ到達（PV）
+        gFetch(GA4_URL, { method: 'POST', body: JSON.stringify({ dateRanges: dateRng, dimensions: dimYM, metrics: [{ name: 'screenPageViews' }], orderBys: orderYM, dimensionFilter: reserveFilter }) }),
+        // 5. 予約ページ離脱率
+        gFetch(GA4_URL, { method: 'POST', body: JSON.stringify({ dateRanges: dateRng, dimensions: dimYM, metrics: [{ name: 'bounceRate' }], orderBys: orderYM, dimensionFilter: reserveFilter }) }),
+      ]);
+
+      // 月→値マップ生成
+      const mkMap = (data, idx = 0) => {
+        const m = {};
+        for (const row of (data.rows || [])) {
+          m[row.dimensionValues[0].value] = parseFloat(row.metricValues[idx].value);
+        }
+        return m;
+      };
+      const sessMap   = mkMap(sessD);
+      const igMap     = mkMap(igD);
+      const orgMap    = mkMap(orgD);
+      const resMap    = mkMap(resD);
+      const bounceMap = mkMap(bounceD);
+
+      const allMonths = [...new Set([...Object.keys(sessMap), ...Object.keys(igMap), ...Object.keys(orgMap)])].sort();
+      const last6 = allMonths.slice(-6);
+      const last3 = last6.slice(-3);
+      const fmtYM = ym => `${ym.slice(0, 4)}/${ym.slice(4, 6)}`;
+      const gv    = (map, ym) => map[ym] || 0;
+
+      // 直近3ヶ月カード
+      document.getElementById('ga4-month-compare').innerHTML = last3.map(ym => {
+        const br = bounceMap[ym] != null ? (bounceMap[ym] * 100).toFixed(1) + '%' : '—';
+        return mkMonthBlock(ym, [
+          [gv(sessMap, ym).toLocaleString(),   'セッション',   'var(--primary)'],
+          [gv(igMap, ym).toLocaleString(),      'Instagram',   ''],
+          [gv(orgMap, ym).toLocaleString(),     '検索流入',     ''],
+          [gv(resMap, ym).toLocaleString(),     '予約ページ到達', ''],
+          [br,                                  '離脱率',       bounceMap[ym] > 0.5 ? 'var(--red)' : ''],
+        ]);
+      }).join('');
+
+      // チャート1: 流入元別
       if (mCharts.ga4) mCharts.ga4.destroy();
-      const ctx = document.getElementById('ga4-chart').getContext('2d');
-      const labels = rows.map(r => `${r.dimensionValues[0].value.slice(4,6)}/${r.dimensionValues[0].value.slice(6,8)}`);
-      mCharts.ga4 = new Chart(ctx, {
+      mCharts.ga4 = new Chart(document.getElementById('ga4-chart').getContext('2d'), {
         type: 'bar',
         data: {
-          labels,
+          labels: last6.map(fmtYM),
           datasets: [
-            { label: 'セッション', data: rows.map(r => v(r, 0)), backgroundColor: 'rgba(44,74,62,.65)',  borderColor: '#2C4A3E', borderWidth: 1.5 },
-            { label: 'ユーザー',   data: rows.map(r => v(r, 1)), backgroundColor: 'rgba(184,122,80,.55)', borderColor: '#B87A50', borderWidth: 1.5 },
+            { label: 'セッション計',   data: last6.map(ym => gv(sessMap, ym)), backgroundColor: 'rgba(44,74,62,.45)',   borderColor: '#2C4A3E', borderWidth: 1.5 },
+            { label: 'Instagram流入',  data: last6.map(ym => gv(igMap, ym)),   backgroundColor: 'rgba(225,104,130,.5)', borderColor: '#e06882', borderWidth: 1.5 },
+            { label: '検索流入(Google organic)', data: last6.map(ym => gv(orgMap, ym)), backgroundColor: 'rgba(37,99,235,.4)', borderColor: '#2563eb', borderWidth: 1.5 },
           ],
         },
         options: {
           responsive: true, maintainAspectRatio: false,
           plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
-          scales: { y: { beginAtZero: true, ticks: { font: { size: 9 }, maxTicksLimit: 5 } } },
+          scales: { y: { beginAtZero: true, ticks: { font: { size: 9 }, maxTicksLimit: 6 } } },
         },
       });
+
+      // チャート2: 予約ページ
+      if (mCharts.ga4r) mCharts.ga4r.destroy();
+      mCharts.ga4r = new Chart(document.getElementById('ga4-reserve-chart').getContext('2d'), {
+        data: {
+          labels: last6.map(fmtYM),
+          datasets: [
+            { type: 'bar',  label: '予約ページ到達(PV)', data: last6.map(ym => gv(resMap, ym)),
+              backgroundColor: 'rgba(184,122,80,.5)', borderColor: '#B87A50', borderWidth: 1.5, yAxisID: 'y' },
+            { type: 'line', label: '離脱率(%)',
+              data: last6.map(ym => bounceMap[ym] != null ? +(bounceMap[ym] * 100).toFixed(1) : null),
+              borderColor: '#e06882', backgroundColor: 'rgba(224,104,130,.08)', borderWidth: 2,
+              fill: false, tension: 0.3, yAxisID: 'y1', spanGaps: true },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
+          scales: {
+            y:  { beginAtZero: true, position: 'left',  ticks: { font: { size: 9 }, maxTicksLimit: 5 } },
+            y1: { beginAtZero: true, position: 'right', min: 0, max: 100, ticks: { font: { size: 9 }, maxTicksLimit: 5, callback: v => v + '%' }, grid: { drawOnChartArea: false } },
+          },
+        },
+      });
+
+      loadEl.style.display = 'none';
+      content.style.display = 'block';
     } catch(e) {
-      sumEl.innerHTML = `<p style="color:var(--red);font-size:0.84rem;padding:8px 0;">${escHtml(e.message)}</p>`;
+      loadEl.textContent = e.message;
+      loadEl.style.color = 'var(--red)';
     }
   }
 
+  // ============================================================
+  // Google Forms
+  // ============================================================
   async function loadForms() {
-    const card = document.getElementById('forms-card');
+    const card  = document.getElementById('forms-card');
     const sumEl = document.getElementById('forms-summary');
     const listEl = document.getElementById('forms-list');
     card.style.display = 'block';
     sumEl.innerHTML = '<p class="loading">読み込み中...</p>';
     try {
-      let res;
-      try {
-        res = await fetch(`https://forms.googleapis.com/v1/forms/${FORM_ID}/responses?pageSize=100`, {
-          headers: { 'Authorization': `Bearer ${gToken}` }
-        });
-      } catch(e) {
-        throw e;
-      }
+      const res = await fetch(`https://forms.googleapis.com/v1/forms/${FORM_ID}/responses?pageSize=100`, {
+        headers: { 'Authorization': `Bearer ${gToken}` }
+      });
       if (res.status === 403) {
         sumEl.innerHTML = `<div style="font-size:0.84rem;color:var(--text-2);padding:8px 0;line-height:1.8;">
           アクセス拒否（403）。以下を確認してください：<br>
