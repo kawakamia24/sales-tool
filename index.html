@@ -1438,22 +1438,27 @@
         fetch(`https://forms.googleapis.com/v1/forms/${FORM_ID}/responses?pageSize=1000`, { headers: authHeader }),
       ]);
 
-      if (defRes.status === 403 || respRes.status === 403) {
-        const msg403 = `<div style="font-size:0.84rem;color:var(--text-2);padding:8px 0;line-height:1.8;">
-          アクセス拒否（403）。以下を確認してください：<br>
-          ① <strong>Google Cloud Console</strong> で「<strong>Google Forms API</strong>」を有効化<br>
-          ② このフォームの所有者アカウントでログインしていること<br>
-          ③ OAuth 同意画面のスコープに <code>forms.responses.readonly</code> が含まれること
-        </div>`;
-        sumEl.innerHTML = msg403;
-        listEl.innerHTML = '';
-        anaLoad.style.display = 'none';
-        anaErr.innerHTML = 'Google Forms API にアクセスできません（403）。上記の「お問い合わせフォーム」カードの手順を参照してください。';
-        anaErr.style.display = 'block';
+      // エラー詳細をGoogleのレスポンスボディから取得して表示
+      const showApiError = async (res, label) => {
+        let detail = '';
+        try { const j = await res.json(); detail = j?.error?.message || JSON.stringify(j); } catch(_) {}
+        return `${label} HTTP ${res.status}: ${detail}`;
+      };
+
+      if (!defRes.ok) {
+        const msg = await showApiError(defRes, 'フォーム定義');
+        sumEl.innerHTML = `<p style="color:var(--red);font-size:0.82rem;line-height:1.6;padding:4px 0;">${escHtml(msg)}</p>`;
+        listEl.innerHTML = ''; anaLoad.style.display = 'none';
+        anaErr.textContent = msg; anaErr.style.display = 'block';
         return;
       }
-      if (!defRes.ok)  throw new Error(`Forms API エラー ${defRes.status}`);
-      if (!respRes.ok) throw new Error(`Forms responses API エラー ${respRes.status}`);
+      if (!respRes.ok) {
+        const msg = await showApiError(respRes, '回答一覧');
+        sumEl.innerHTML = `<p style="color:var(--red);font-size:0.82rem;line-height:1.6;padding:4px 0;">${escHtml(msg)}</p>`;
+        listEl.innerHTML = ''; anaLoad.style.display = 'none';
+        anaErr.textContent = msg; anaErr.style.display = 'block';
+        return;
+      }
 
       const [formDef, data] = await Promise.all([defRes.json(), respRes.json()]);
 
