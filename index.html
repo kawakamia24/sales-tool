@@ -1134,11 +1134,7 @@
       const dateRng  = [{ startDate: '180daysAgo', endDate: 'yesterday' }];
       const dimYM    = [{ name: 'yearMonth' }];
       const orderYM  = [{ dimension: { dimensionName: 'yearMonth' } }];
-      const reserveFilter = { orGroup: { expressions: [
-        { filter: { fieldName: 'pagePath', stringFilter: { matchType: 'CONTAINS', value: '/reserve' } } },
-        { filter: { fieldName: 'pagePath', stringFilter: { matchType: 'CONTAINS', value: '/booking' } } },
-        { filter: { fieldName: 'pagePath', stringFilter: { matchType: 'CONTAINS', value: '/contact' } } },
-      ]}};
+      const reserveFilter = { filter: { fieldName: 'linkUrl', stringFilter: { matchType: 'CONTAINS', value: 'reserva.be' } } };
 
       const srcReq = (startDate) => gFetch(GA4_URL, { method: 'POST', body: JSON.stringify({
         dateRanges: [{ startDate, endDate: 'yesterday' }],
@@ -1148,7 +1144,7 @@
         limit: 15,
       })});
 
-      const [sessD, igD, orgD, resD, bounceD, src28D, srcAllD] = await Promise.all([
+      const [sessD, igD, orgD, resD, src28D, srcAllD] = await Promise.all([
         // 1. 総セッション数
         gFetch(GA4_URL, { method: 'POST', body: JSON.stringify({ dateRanges: dateRng, dimensions: dimYM, metrics: [{ name: 'sessions' }], orderBys: orderYM }) }),
         // 2. Instagram流入
@@ -1165,13 +1161,11 @@
             { filter: { fieldName: 'sessionMedium', stringFilter: { matchType: 'EXACT', value: 'organic' } } },
           ]}},
         })}),
-        // 4. 予約ページ到達（PV）
-        gFetch(GA4_URL, { method: 'POST', body: JSON.stringify({ dateRanges: dateRng, dimensions: dimYM, metrics: [{ name: 'screenPageViews' }], orderBys: orderYM, dimensionFilter: reserveFilter }) }),
-        // 5. 予約ページ離脱率
-        gFetch(GA4_URL, { method: 'POST', body: JSON.stringify({ dateRanges: dateRng, dimensions: dimYM, metrics: [{ name: 'bounceRate' }], orderBys: orderYM, dimensionFilter: reserveFilter }) }),
-        // 6. 参照元/メディア（直近28日）
+        // 4. 予約クリック数（reserva.be への外部リンククリック）
+        gFetch(GA4_URL, { method: 'POST', body: JSON.stringify({ dateRanges: dateRng, dimensions: dimYM, metrics: [{ name: 'eventCount' }], orderBys: orderYM, dimensionFilter: reserveFilter }) }),
+        // 5. 参照元/メディア（直近28日）
         srcReq('28daysAgo'),
-        // 7. 参照元/メディア（トータル）
+        // 6. 参照元/メディア（トータル）
         srcReq('2020-01-01'),
       ]);
 
@@ -1187,8 +1181,6 @@
       const igMap     = mkMap(igD);
       const orgMap    = mkMap(orgD);
       const resMap    = mkMap(resD);
-      const bounceMap = mkMap(bounceD);
-
       const allMonths = [...new Set([...Object.keys(sessMap), ...Object.keys(igMap), ...Object.keys(orgMap)])].sort();
       const last6 = allMonths.slice(-6);
       const last3 = last6.slice(-3);
@@ -1197,12 +1189,10 @@
 
       // 直近3ヶ月カード
       document.getElementById('ga4-month-compare').innerHTML = last3.map(ym => {
-        const br = bounceMap[ym] != null ? (bounceMap[ym] * 100).toFixed(1) + '%' : '—';
         return mkMonthBlock(ym, [
           [gv(sessMap, ym).toLocaleString(),   'セッション',   'var(--primary)'],
           [gv(orgMap, ym).toLocaleString(),     '検索流入',     ''],
-          [gv(resMap, ym).toLocaleString(),     '予約ページ到達', ''],
-          [br,                                  '離脱率',       bounceMap[ym] > 0.5 ? 'var(--red)' : ''],
+          [gv(resMap, ym).toLocaleString(),     '予約クリック数', ''],
         ]);
       }).join('');
 
@@ -1228,24 +1218,18 @@
       // チャート2: 予約ページ
       if (mCharts.ga4r) mCharts.ga4r.destroy();
       mCharts.ga4r = new Chart(document.getElementById('ga4-reserve-chart').getContext('2d'), {
+        type: 'bar',
         data: {
           labels: last6.map(fmtYM),
           datasets: [
-            { type: 'bar',  label: '予約ページ到達(PV)', data: last6.map(ym => gv(resMap, ym)),
-              backgroundColor: 'rgba(184,122,80,.5)', borderColor: '#B87A50', borderWidth: 1.5, yAxisID: 'y' },
-            { type: 'line', label: '離脱率(%)',
-              data: last6.map(ym => bounceMap[ym] != null ? +(bounceMap[ym] * 100).toFixed(1) : null),
-              borderColor: '#e06882', backgroundColor: 'rgba(224,104,130,.08)', borderWidth: 2,
-              fill: false, tension: 0.3, yAxisID: 'y1', spanGaps: true },
+            { label: '予約クリック数', data: last6.map(ym => gv(resMap, ym)),
+              backgroundColor: 'rgba(184,122,80,.5)', borderColor: '#B87A50', borderWidth: 1.5 },
           ],
         },
         options: {
           responsive: true, maintainAspectRatio: false,
           plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
-          scales: {
-            y:  { beginAtZero: true, position: 'left',  ticks: { font: { size: 9 }, maxTicksLimit: 5 } },
-            y1: { beginAtZero: true, position: 'right', min: 0, max: 100, ticks: { font: { size: 9 }, maxTicksLimit: 5, callback: v => v + '%' }, grid: { drawOnChartArea: false } },
-          },
+          scales: { y: { beginAtZero: true, ticks: { font: { size: 9 }, maxTicksLimit: 5 } } },
         },
       });
 
