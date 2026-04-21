@@ -947,6 +947,12 @@
             return;
           }
           gToken = resp.access_token;
+          // デバッグ: 付与されたスコープを表示
+          const grantedScopes = (resp.scope || '').split(' ');
+          const hasFormsScope = grantedScopes.some(s => s.includes('forms'));
+          errEl.style.color = hasFormsScope ? 'var(--green)' : 'var(--red)';
+          errEl.innerHTML = `スコープ確認：<br>${grantedScopes.map(s => `• ${s}`).join('<br>')}`;
+          errEl.style.display = 'block';
           document.getElementById('marketing-auth-card').style.display = 'none';
           await loadMarketingData();
         },
