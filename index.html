@@ -1208,10 +1208,10 @@
         const ctr     = s > 0 ? (clicks / s * 100).toFixed(1) + '%' : '—';
         const cvr     = clicks > 0 ? (bookCnt / clicks * 100).toFixed(1) + '%' : '—';
         return mkMonthBlock(ym, [
-          [ctr,  '予約CTR',    'var(--primary)', 'lg'],
-          [cvr,  'クリック転換率', clicks > 0 && bookCnt / clicks >= 0.3 ? '#B87A50' : 'var(--text)', 'lg'],
-          [s.toLocaleString(),      'セッション',   '', 'sm'],
-          [clicks.toLocaleString(), '予約クリック数', '', 'sm'],
+          [ctr,  '予約CTR',    'var(--primary)'],
+          [cvr,  'クリック転換率', clicks > 0 && bookCnt / clicks >= 0.3 ? '#B87A50' : ''],
+          [s.toLocaleString(),      'セッション',   ''],
+          [clicks.toLocaleString(), '予約クリック数', ''],
         ]);
       }).join('');
 
