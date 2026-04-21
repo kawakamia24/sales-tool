@@ -346,9 +346,6 @@
         <!-- 直近3ヶ月比較 -->
         <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">直近3ヶ月</div>
         <div id="ga4-month-compare" style="display:flex;gap:8px;margin-bottom:20px;"></div>
-        <!-- 流入元チャート -->
-        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">流入元別推移（過去6ヶ月）</div>
-        <div style="position:relative;height:220px;"><canvas id="ga4-chart"></canvas></div>
         <!-- 予約ページチャート -->
         <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px;">予約ページ（過去6ヶ月）</div>
         <div style="position:relative;height:200px;"><canvas id="ga4-reserve-chart"></canvas></div>
@@ -1202,26 +1199,7 @@
         ]);
       }).join('');
 
-      // チャート1: 流入元別
-      if (mCharts.ga4) mCharts.ga4.destroy();
-      mCharts.ga4 = new Chart(document.getElementById('ga4-chart').getContext('2d'), {
-        type: 'bar',
-        data: {
-          labels: last6.map(fmtYM),
-          datasets: [
-            { label: 'セッション計',   data: last6.map(ym => gv(sessMap, ym)), backgroundColor: 'rgba(44,74,62,.45)',   borderColor: '#2C4A3E', borderWidth: 1.5 },
-            { label: 'Instagram流入',  data: last6.map(ym => gv(igMap, ym)),   backgroundColor: 'rgba(225,104,130,.5)', borderColor: '#e06882', borderWidth: 1.5 },
-            { label: '検索流入(Google organic)', data: last6.map(ym => gv(orgMap, ym)), backgroundColor: 'rgba(37,99,235,.4)', borderColor: '#2563eb', borderWidth: 1.5 },
-          ],
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
-          scales: { y: { beginAtZero: true, ticks: { font: { size: 9 }, maxTicksLimit: 6 } } },
-        },
-      });
-
-      // チャート2: 予約ページ
+      // チャート: 予約ページ
       if (mCharts.ga4r) mCharts.ga4r.destroy();
       mCharts.ga4r = new Chart(document.getElementById('ga4-reserve-chart').getContext('2d'), {
         data: {
