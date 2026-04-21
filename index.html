@@ -356,6 +356,35 @@
       <div id="forms-list"></div>
     </div>
 
+    <!-- 来店データ分析カード -->
+    <div class="card" id="forms-analysis-card" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="analysis-section-title" style="margin-bottom:0;">来店データ</div>
+        <div style="display:flex;gap:6px;">
+          <button id="ftog-month" onclick="setFormsMode('month')" style="font-size:0.72rem;padding:5px 11px;border-radius:8px;border:1.5px solid var(--primary);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;cursor:pointer;">今月</button>
+          <button id="ftog-all"   onclick="setFormsMode('all')"   style="font-size:0.72rem;padding:5px 11px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;">累計</button>
+        </div>
+      </div>
+      <div id="forms-ana-loading" style="font-size:0.84rem;color:var(--text-3);">読み込み中...</div>
+      <div id="forms-ana-err" style="display:none;font-size:0.84rem;line-height:1.7;color:var(--text-2);padding:4px 0;"></div>
+      <div id="forms-ana-content" style="display:none">
+        <!-- 来店回数 -->
+        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">来店回数</div>
+        <div id="forms-repeat-kpi" style="margin-bottom:10px;"></div>
+        <div style="position:relative;height:200px;margin-bottom:24px;"><canvas id="forms-visit-chart"></canvas></div>
+        <!-- 年齢層 -->
+        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">年齢層</div>
+        <div style="position:relative;height:210px;margin-bottom:24px;"><canvas id="forms-age-chart"></canvas></div>
+        <!-- 居住地 -->
+        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">居住地</div>
+        <div style="position:relative;height:220px;margin-bottom:24px;"><canvas id="forms-area-chart"></canvas></div>
+        <!-- 流入経路 -->
+        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">流入経路（何で知ったか）</div>
+        <div style="position:relative;height:210px;margin-bottom:12px;"><canvas id="forms-source-chart"></canvas></div>
+        <div id="forms-ga4-compare" style="margin-top:4px;"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -888,6 +917,13 @@
   let gTokenClient = null;
   const mCharts = {};
 
+  let formsResponses = [];
+  let formsQMap      = {};
+  let _formsMode     = 'month';
+  let ga4ThisMonth   = { ig: 0, organic: 0 };
+
+  const F_COLORS = ['#2C4A3E','#B87A50','#0891b2','#4f46e5','#e06882','#16a34a','#f59e0b','#be185d','#6366f1','#10b981','#64748b'];
+
   window.requestGoogleToken = function() {
     const errEl = document.getElementById('marketing-error');
     errEl.style.display = 'none';
@@ -1179,6 +1215,9 @@
       const resMap    = mkMap(resD);
       const bounceMap = mkMap(bounceD);
 
+      const nowYM = (() => { const d = new Date(); return String(d.getFullYear()) + String(d.getMonth()+1).padStart(2,'0'); })();
+      ga4ThisMonth = { ig: igMap[nowYM] || 0, organic: orgMap[nowYM] || 0 };
+
       const allMonths = [...new Set([...Object.keys(sessMap), ...Object.keys(igMap), ...Object.keys(orgMap)])].sort();
       const last6 = allMonths.slice(-6);
       const last3 = last6.slice(-3);
@@ -1249,35 +1288,183 @@
   }
 
   // ============================================================
+  // Google Forms — ヘルパー
+  // ============================================================
+  window.setFormsMode = function(mode) {
+    _formsMode = mode;
+    const onStyle  = 'font-size:0.72rem;padding:5px 11px;border-radius:8px;border:1.5px solid var(--primary);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;cursor:pointer;';
+    const offStyle = 'font-size:0.72rem;padding:5px 11px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;';
+    document.getElementById('ftog-month').style.cssText = mode === 'month' ? onStyle : offStyle;
+    document.getElementById('ftog-all').style.cssText   = mode === 'all'   ? onStyle : offStyle;
+    renderFormsCharts(mode === 'month' ? new Date().toISOString().slice(0, 7) : null);
+  };
+
+  function _findQId(keywords) {
+    for (const [qId, title] of Object.entries(formsQMap)) {
+      if (keywords.some(kw => title.includes(kw))) return qId;
+    }
+    return null;
+  }
+
+  function _aggForms(filterMonth) {
+    const recs = filterMonth
+      ? formsResponses.filter(r => r.createTime.startsWith(filterMonth))
+      : formsResponses;
+    const agg = (qId) => {
+      if (!qId) return {};
+      const counts = {};
+      for (const resp of recs) {
+        for (const a of (resp.answers?.[qId]?.textAnswers?.answers || [])) {
+          const val = a.value || '不明';
+          counts[val] = (counts[val] || 0) + 1;
+        }
+      }
+      return counts;
+    };
+    return {
+      n:      recs.length,
+      age:    agg(_findQId(['年齢', '年代'])),
+      area:   agg(_findQId(['居住地', '地域', 'お住まい', '都道府県', '住'])),
+      source: agg(_findQId(['流入', '知った', 'きっかけ', '何で', '来店理由', '参考'])),
+      visit:  agg(_findQId(['来店', '回数', '何回目', '回目', '今回'])),
+    };
+  }
+
+  function _mkDonut(canvasId, data) {
+    const keys = Object.keys(data).sort((a, b) => data[b] - data[a]);
+    if (mCharts[canvasId]) mCharts[canvasId].destroy();
+    mCharts[canvasId] = new Chart(document.getElementById(canvasId).getContext('2d'), {
+      type: 'doughnut',
+      data: { labels: keys, datasets: [{ data: keys.map(k => data[k]), backgroundColor: F_COLORS.slice(0, keys.length), borderWidth: 2, borderColor: '#FAFAF8' }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12, padding: 10 } } } },
+    });
+  }
+
+  function _mkBar(canvasId, data, horizontal) {
+    const keys = Object.keys(data).sort((a, b) => data[b] - data[a]);
+    const vals = keys.map(k => data[k]);
+    if (mCharts[canvasId]) mCharts[canvasId].destroy();
+    mCharts[canvasId] = new Chart(document.getElementById(canvasId).getContext('2d'), {
+      type: 'bar',
+      data: { labels: keys, datasets: [{ data: vals, backgroundColor: F_COLORS.slice(0, keys.length), borderRadius: 5, borderWidth: 0 }] },
+      options: {
+        indexAxis: horizontal ? 'y' : 'x',
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          [horizontal ? 'x' : 'y']: { beginAtZero: true, ticks: { font: { size: 9 }, stepSize: 1 } },
+          [horizontal ? 'y' : 'x']: { ticks: { font: { size: 10 } } },
+        },
+      },
+    });
+  }
+
+  function renderFormsCharts(filterMonth) {
+    const contentEl = document.getElementById('forms-ana-content');
+    contentEl.style.display = 'block';
+    const d = _aggForms(filterMonth);
+
+    if (d.n === 0) {
+      contentEl.innerHTML = `<p style="color:var(--text-3);font-size:0.84rem;padding:8px 0;">${filterMonth ? '今月の回答はまだありません' : '回答データがありません'}</p>`;
+      return;
+    }
+
+    // 来店回数・リピーター率
+    const totalVisit  = Object.values(d.visit).reduce((s, v) => s + v, 0);
+    const firstCount  = Object.entries(d.visit).filter(([k]) => /初|はじめ|1回|１回/i.test(k)).reduce((s, [, v]) => s + v, 0);
+    const repeatRate  = totalVisit > 0 ? Math.round((totalVisit - firstCount) / totalVisit * 100) : 0;
+    document.getElementById('forms-repeat-kpi').innerHTML =
+      `リピーター率 <strong style="font-size:1.4rem;color:var(--primary);">${repeatRate}%</strong>` +
+      `<span style="font-size:0.78rem;font-weight:400;color:var(--text-2);margin-left:6px;">(${totalVisit - firstCount}/${totalVisit}件)</span>`;
+    if (Object.keys(d.visit).length) _mkDonut('forms-visit-chart', d.visit);
+
+    // 年齢層
+    if (Object.keys(d.age).length)    _mkBar('forms-age-chart', d.age, false);
+
+    // 居住地（横棒）
+    if (Object.keys(d.area).length)   _mkBar('forms-area-chart', d.area, true);
+
+    // 流入経路
+    if (Object.keys(d.source).length) _mkDonut('forms-source-chart', d.source);
+
+    // GA4比較（今月のみ表示）
+    const ga4El = document.getElementById('forms-ga4-compare');
+    if (ga4El && (ga4ThisMonth.ig > 0 || ga4ThisMonth.organic > 0)) {
+      const nowLabel = new Date().toISOString().slice(0, 7).replace('-', '/');
+      ga4El.innerHTML = `
+        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;margin-top:4px;">GA4 流入元（${nowLabel}）</div>
+        <div style="display:flex;gap:8px;">
+          <div style="flex:1;background:var(--surface);border-radius:10px;padding:10px 8px;text-align:center;">
+            <div style="font-size:1.05rem;font-weight:700;color:var(--text);">${ga4ThisMonth.ig.toLocaleString()}</div>
+            <div style="font-size:0.6rem;color:var(--text-3);margin-top:3px;">Instagram流入</div>
+          </div>
+          <div style="flex:1;background:var(--surface);border-radius:10px;padding:10px 8px;text-align:center;">
+            <div style="font-size:1.05rem;font-weight:700;color:var(--text);">${ga4ThisMonth.organic.toLocaleString()}</div>
+            <div style="font-size:0.6rem;color:var(--text-3);margin-top:3px;">検索流入</div>
+          </div>
+        </div>`;
+    } else if (ga4El) {
+      ga4El.innerHTML = '';
+    }
+  }
+
+  // ============================================================
   // Google Forms
   // ============================================================
   async function loadForms() {
-    const card  = document.getElementById('forms-card');
-    const sumEl = document.getElementById('forms-summary');
-    const listEl = document.getElementById('forms-list');
-    card.style.display = 'block';
+    const card     = document.getElementById('forms-card');
+    const anaCard  = document.getElementById('forms-analysis-card');
+    const sumEl    = document.getElementById('forms-summary');
+    const listEl   = document.getElementById('forms-list');
+    const anaLoad  = document.getElementById('forms-ana-loading');
+    const anaErr   = document.getElementById('forms-ana-err');
+    card.style.display    = 'block';
+    anaCard.style.display = 'block';
     sumEl.innerHTML = '<p class="loading">読み込み中...</p>';
+    anaLoad.style.display = 'block';
+    document.getElementById('forms-ana-content').style.display = 'none';
+    anaErr.style.display  = 'none';
+
+    const authHeader = { 'Authorization': `Bearer ${gToken}` };
     try {
-      const res = await fetch(`https://forms.googleapis.com/v1/forms/${FORM_ID}/responses?pageSize=100`, {
-        headers: { 'Authorization': `Bearer ${gToken}` }
-      });
-      if (res.status === 403) {
-        sumEl.innerHTML = `<div style="font-size:0.84rem;color:var(--text-2);padding:8px 0;line-height:1.8;">
+      const [defRes, respRes] = await Promise.all([
+        fetch(`https://forms.googleapis.com/v1/forms/${FORM_ID}`, { headers: authHeader }),
+        fetch(`https://forms.googleapis.com/v1/forms/${FORM_ID}/responses?pageSize=1000`, { headers: authHeader }),
+      ]);
+
+      if (defRes.status === 403 || respRes.status === 403) {
+        const msg403 = `<div style="font-size:0.84rem;color:var(--text-2);padding:8px 0;line-height:1.8;">
           アクセス拒否（403）。以下を確認してください：<br>
           ① <strong>Google Cloud Console</strong> で「<strong>Google Forms API</strong>」を有効化<br>
           ② このフォームの所有者アカウントでログインしていること<br>
           ③ OAuth 同意画面のスコープに <code>forms.responses.readonly</code> が含まれること
         </div>`;
+        sumEl.innerHTML = msg403;
         listEl.innerHTML = '';
+        anaLoad.style.display = 'none';
+        anaErr.innerHTML = 'Google Forms API にアクセスできません（403）。上記の「お問い合わせフォーム」カードの手順を参照してください。';
+        anaErr.style.display = 'block';
         return;
       }
-      if (!res.ok) throw new Error(`API エラー ${res.status}`);
-      const data = await res.json();
-      const responses = (data.responses || []).sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
+      if (!defRes.ok)  throw new Error(`Forms API エラー ${defRes.status}`);
+      if (!respRes.ok) throw new Error(`Forms responses API エラー ${respRes.status}`);
+
+      const [formDef, data] = await Promise.all([defRes.json(), respRes.json()]);
+
+      // フォーム設問IDマップ構築
+      formsQMap = {};
+      for (const item of (formDef.items || [])) {
+        const qId = item.questionItem?.question?.questionId;
+        if (qId) formsQMap[qId] = item.title || '';
+      }
+
+      formsResponses = (data.responses || []).sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
+
+      // サマリーカード更新
       const thisMonth  = new Date().toISOString().slice(0, 7);
-      const monthCount = responses.filter(r => r.createTime.startsWith(thisMonth)).length;
+      const monthCount = formsResponses.filter(r => r.createTime.startsWith(thisMonth)).length;
       sumEl.innerHTML = `
-        <div class="summary-item main"><div class="s-label">総回答数</div><div class="s-val">${responses.length}</div></div>
+        <div class="summary-item main"><div class="s-label">総回答数</div><div class="s-val">${formsResponses.length}</div></div>
         <div class="summary-item"><div class="s-label">今月の回答</div><div class="s-val">${monthCount}</div></div>`;
       const fmt = s => {
         const d = new Date(s);
@@ -1285,14 +1472,22 @@
       };
       listEl.innerHTML = `<div style="margin-top:14px;">
         <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">直近の回答</div>
-        ${responses.slice(0, 15).map(r => `
+        ${formsResponses.slice(0, 15).map(r => `
           <div style="padding:10px 0;border-bottom:1px solid var(--surface);display:flex;align-items:center;gap:10px;">
             <div style="width:8px;height:8px;border-radius:50%;background:var(--primary-l);flex-shrink:0;"></div>
             <span style="font-size:0.84rem;color:var(--text-2);">${fmt(r.createTime)}</span>
           </div>`).join('')}
       </div>`;
+
+      // 分析カード描画
+      anaLoad.style.display = 'none';
+      renderFormsCharts(_formsMode === 'month' ? thisMonth : null);
+
     } catch(e) {
       sumEl.innerHTML = `<p style="color:var(--red);font-size:0.84rem;padding:8px 0;">${escHtml(e.message)}</p>`;
+      anaLoad.style.display = 'none';
+      anaErr.textContent = e.message;
+      anaErr.style.display = 'block';
     }
   }
 
