@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kartta</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -293,6 +294,36 @@
   </div>
 </div>
 
+<!-- ========== 集客ページ ========== -->
+<div class="page" id="page-marketing">
+  <div class="container">
+    <div class="card" id="marketing-auth-card">
+      <div class="analysis-section-title">Google 連携</div>
+      <p style="font-size:0.88rem;color:var(--text-2);margin-bottom:16px;line-height:1.6;">Search Console・GA4・お問い合わせフォームのデータを表示するには Google アカウントとの連携が必要です。</p>
+      <button class="btn-add" onclick="requestGoogleToken()">Google と連携する</button>
+      <p id="marketing-error" style="display:none;margin-top:12px;font-size:0.82rem;color:var(--red);text-align:center;"></p>
+    </div>
+    <div class="card" id="sc-card" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="analysis-section-title" style="margin-bottom:0;">Search Console <span style="font-weight:400;font-size:0.7rem;opacity:.7;">（過去28日）</span></div>
+        <button onclick="reloadMarketingData()" style="font-size:0.75rem;color:var(--text-3);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-family:inherit;font-weight:600;">再読込</button>
+      </div>
+      <div class="summary-grid" id="sc-summary"></div>
+      <div style="position:relative;height:220px;margin-top:16px;"><canvas id="sc-chart"></canvas></div>
+    </div>
+    <div class="card" id="ga4-card" style="display:none">
+      <div class="analysis-section-title">Google Analytics <span style="font-weight:400;font-size:0.7rem;opacity:.7;">（過去28日）</span></div>
+      <div class="summary-grid" id="ga4-summary"></div>
+      <div style="position:relative;height:220px;margin-top:16px;"><canvas id="ga4-chart"></canvas></div>
+    </div>
+    <div class="card" id="forms-card" style="display:none">
+      <div class="analysis-section-title">お問い合わせフォーム</div>
+      <div class="summary-grid" id="forms-summary"></div>
+      <div id="forms-list"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ========== ボトムナビ ========== -->
 <nav class="bottom-nav">
   <button class="nav-btn active" id="nav-home" onclick="switchPage('home')">
@@ -302,6 +333,10 @@
   <button class="nav-btn" id="nav-analysis" onclick="switchPage('analysis')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
     分析
+  </button>
+  <button class="nav-btn" id="nav-marketing" onclick="switchPage('marketing')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M3 12h2m14 0h2M12 3v2m0 14v2m-6.4-3.6 1.4-1.4m8.6-8.6 1.4-1.4M5.6 5.6 7 7m10 10 1.4 1.4"/></svg>
+    集客
   </button>
 </nav>
 
@@ -803,7 +838,206 @@
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('page-' + page).classList.add('active');
     document.getElementById('nav-' + page).classList.add('active');
+    if (page === 'marketing' && gToken) loadMarketingData();
   };
+
+  // ============================================================
+  // 集客 (Search Console + GA4 + Google Forms)
+  // ============================================================
+  // ★ Google Cloud Console で作成した OAuth 2.0 クライアント ID を設定してください
+  // 許可するオリジン: https://kawakamia24.github.io
+  // 許可するリダイレクト URI: 不要（暗黙的フロー）
+  const G_CLIENT_ID = 'YOUR_GOOGLE_OAUTH_CLIENT_ID'; // ← ここを変更
+
+  const SC_SITE      = 'https://viehattava.com/';
+  const GA4_PROPERTY = '451193305';
+  const FORM_ID      = '16FizQa__bG5yvueGniJV_iJcqBRcqFNu7SZbEnLPwqw';
+
+  let gToken = null;
+  let gTokenClient = null;
+  const mCharts = {};
+
+  window.requestGoogleToken = function() {
+    const errEl = document.getElementById('marketing-error');
+    errEl.style.display = 'none';
+    if (!window.google?.accounts?.oauth2) {
+      errEl.textContent = 'Google 認証ライブラリを読み込み中です。しばらく待ってからお試しください。';
+      errEl.style.display = 'block';
+      return;
+    }
+    if (G_CLIENT_ID === 'YOUR_GOOGLE_OAUTH_CLIENT_ID') {
+      errEl.textContent = 'G_CLIENT_ID が未設定です。index.html の G_CLIENT_ID を Google Cloud Console のクライアント ID に変更してください。';
+      errEl.style.display = 'block';
+      return;
+    }
+    if (!gTokenClient) {
+      gTokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: G_CLIENT_ID,
+        scope: [
+          'https://www.googleapis.com/auth/webmasters.readonly',
+          'https://www.googleapis.com/auth/analytics.readonly',
+          'https://www.googleapis.com/auth/forms.responses.readonly',
+        ].join(' '),
+        callback: async (resp) => {
+          if (resp.error) {
+            errEl.textContent = '連携に失敗しました: ' + resp.error;
+            errEl.style.display = 'block';
+            return;
+          }
+          gToken = resp.access_token;
+          document.getElementById('marketing-auth-card').style.display = 'none';
+          await loadMarketingData();
+        },
+      });
+    }
+    gTokenClient.requestAccessToken({ prompt: '' });
+  };
+
+  window.reloadMarketingData = function() { loadMarketingData(); };
+
+  function dateMinus(days) {
+    const d = new Date();
+    d.setDate(d.getDate() - days);
+    return d.toISOString().slice(0, 10);
+  }
+
+  async function gFetch(url, opts = {}) {
+    const res = await fetch(url, {
+      ...opts,
+      headers: { 'Authorization': `Bearer ${gToken}`, 'Content-Type': 'application/json', ...(opts.headers || {}) },
+    });
+    if (res.status === 401) { gToken = null; throw new Error('認証の有効期限が切れました。再度連携してください。'); }
+    if (!res.ok) throw new Error(`API エラー ${res.status}`);
+    return res.json();
+  }
+
+  async function loadMarketingData() {
+    await Promise.allSettled([loadSC(), loadGA4(), loadForms()]);
+  }
+
+  async function loadSC() {
+    const card = document.getElementById('sc-card');
+    const sumEl = document.getElementById('sc-summary');
+    card.style.display = 'block';
+    sumEl.innerHTML = '<p class="loading">読み込み中...</p>';
+    try {
+      const data = await gFetch(
+        `https://searchconsole.googleapis.com/webmasters/v3/sites/${encodeURIComponent(SC_SITE)}/searchAnalytics/query`,
+        { method: 'POST', body: JSON.stringify({ startDate: dateMinus(28), endDate: dateMinus(1), dimensions: ['date'], rowLimit: 30 }) }
+      );
+      const rows = data.rows || [];
+      const totalImp    = rows.reduce((s, r) => s + r.impressions, 0);
+      const totalClicks = rows.reduce((s, r) => s + r.clicks, 0);
+      const avgCtr      = totalImp > 0 ? (totalClicks / totalImp * 100).toFixed(1) : '0.0';
+      const avgPos      = rows.length > 0 ? (rows.reduce((s, r) => s + r.position, 0) / rows.length).toFixed(1) : '—';
+      sumEl.innerHTML = `
+        <div class="summary-item main"><div class="s-label">表示回数</div><div class="s-val">${totalImp.toLocaleString()}</div></div>
+        <div class="summary-item"><div class="s-label">クリック数</div><div class="s-val">${totalClicks.toLocaleString()}</div></div>
+        <div class="summary-item"><div class="s-label">CTR</div><div class="s-val">${avgCtr}%</div></div>
+        <div class="summary-item"><div class="s-label">平均順位</div><div class="s-val">${avgPos}</div></div>`;
+      if (mCharts.sc) mCharts.sc.destroy();
+      const ctx = document.getElementById('sc-chart').getContext('2d');
+      mCharts.sc = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: rows.map(r => r.keys[0].slice(5)),
+          datasets: [
+            { label: '表示回数', data: rows.map(r => r.impressions), borderColor: '#2C4A3E', backgroundColor: 'rgba(44,74,62,.1)', borderWidth: 2, fill: true, tension: 0.3, yAxisID: 'y' },
+            { label: 'クリック', data: rows.map(r => r.clicks),      borderColor: '#B87A50', backgroundColor: 'rgba(184,122,80,.1)', borderWidth: 2, fill: false, tension: 0.3, yAxisID: 'y1' },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
+          scales: {
+            y:  { beginAtZero: true, position: 'left',  ticks: { font: { size: 9 }, maxTicksLimit: 5 } },
+            y1: { beginAtZero: true, position: 'right', ticks: { font: { size: 9 }, maxTicksLimit: 5 }, grid: { drawOnChartArea: false } },
+          },
+        },
+      });
+    } catch(e) {
+      sumEl.innerHTML = `<p style="color:var(--red);font-size:0.84rem;padding:8px 0;">${escHtml(e.message)}</p>`;
+      if (!gToken) { document.getElementById('marketing-auth-card').style.display = 'block'; card.style.display = 'none'; }
+    }
+  }
+
+  async function loadGA4() {
+    const card = document.getElementById('ga4-card');
+    const sumEl = document.getElementById('ga4-summary');
+    card.style.display = 'block';
+    sumEl.innerHTML = '<p class="loading">読み込み中...</p>';
+    try {
+      const data = await gFetch(
+        `https://analyticsdata.googleapis.com/v1beta/properties/${GA4_PROPERTY}:runReport`,
+        { method: 'POST', body: JSON.stringify({
+          dateRanges: [{ startDate: dateMinus(28), endDate: dateMinus(1) }],
+          dimensions: [{ name: 'date' }],
+          metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'screenPageViews' }],
+          orderBys: [{ dimension: { dimensionName: 'date' } }],
+        })}
+      );
+      const rows = data.rows || [];
+      const v = (r, i) => parseInt(r.metricValues[i].value);
+      const totalSess = rows.reduce((s, r) => s + v(r, 0), 0);
+      const totalUser = rows.reduce((s, r) => s + v(r, 1), 0);
+      const totalPV   = rows.reduce((s, r) => s + v(r, 2), 0);
+      sumEl.innerHTML = `
+        <div class="summary-item main"><div class="s-label">セッション</div><div class="s-val">${totalSess.toLocaleString()}</div></div>
+        <div class="summary-item"><div class="s-label">ユーザー</div><div class="s-val">${totalUser.toLocaleString()}</div></div>
+        <div class="summary-item"><div class="s-label">ページビュー</div><div class="s-val">${totalPV.toLocaleString()}</div></div>`;
+      if (mCharts.ga4) mCharts.ga4.destroy();
+      const ctx = document.getElementById('ga4-chart').getContext('2d');
+      const labels = rows.map(r => `${r.dimensionValues[0].value.slice(4,6)}/${r.dimensionValues[0].value.slice(6,8)}`);
+      mCharts.ga4 = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            { label: 'セッション', data: rows.map(r => v(r, 0)), backgroundColor: 'rgba(44,74,62,.65)',  borderColor: '#2C4A3E', borderWidth: 1.5 },
+            { label: 'ユーザー',   data: rows.map(r => v(r, 1)), backgroundColor: 'rgba(184,122,80,.55)', borderColor: '#B87A50', borderWidth: 1.5 },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
+          scales: { y: { beginAtZero: true, ticks: { font: { size: 9 }, maxTicksLimit: 5 } } },
+        },
+      });
+    } catch(e) {
+      sumEl.innerHTML = `<p style="color:var(--red);font-size:0.84rem;padding:8px 0;">${escHtml(e.message)}</p>`;
+    }
+  }
+
+  async function loadForms() {
+    const card = document.getElementById('forms-card');
+    const sumEl = document.getElementById('forms-summary');
+    const listEl = document.getElementById('forms-list');
+    card.style.display = 'block';
+    sumEl.innerHTML = '<p class="loading">読み込み中...</p>';
+    try {
+      const data = await gFetch(`https://forms.googleapis.com/v1/forms/${FORM_ID}/responses?pageSize=100`);
+      const responses = (data.responses || []).sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
+      const thisMonth  = new Date().toISOString().slice(0, 7);
+      const monthCount = responses.filter(r => r.createTime.startsWith(thisMonth)).length;
+      sumEl.innerHTML = `
+        <div class="summary-item main"><div class="s-label">総回答数</div><div class="s-val">${responses.length}</div></div>
+        <div class="summary-item"><div class="s-label">今月の回答</div><div class="s-val">${monthCount}</div></div>`;
+      const fmt = s => {
+        const d = new Date(s);
+        return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+      };
+      listEl.innerHTML = `<div style="margin-top:14px;">
+        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">直近の回答</div>
+        ${responses.slice(0, 15).map(r => `
+          <div style="padding:10px 0;border-bottom:1px solid var(--surface);display:flex;align-items:center;gap:10px;">
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--primary-l);flex-shrink:0;"></div>
+            <span style="font-size:0.84rem;color:var(--text-2);">${fmt(r.createTime)}</span>
+          </div>`).join('')}
+      </div>`;
+    } catch(e) {
+      sumEl.innerHTML = `<p style="color:var(--red);font-size:0.84rem;padding:8px 0;">${escHtml(e.message)}</p>`;
+    }
+  }
 
   window.switchChart = function(type, btn) {
     currentChartType = type;
