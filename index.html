@@ -347,8 +347,10 @@
         <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">直近3ヶ月</div>
         <div id="ga4-month-compare" style="display:flex;gap:8px;margin-bottom:20px;"></div>
         <!-- 予約ページチャート -->
-        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px;">セッション数 / 予約クリック数（過去6ヶ月）</div>
-        <div style="position:relative;height:200px;"><canvas id="ga4-reserve-chart"></canvas></div>
+        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px;">セッション数 / 予約CTR（過去6ヶ月）</div>
+        <div style="position:relative;height:190px;"><canvas id="ga4-sess-chart"></canvas></div>
+        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px;">予約クリック数 / 予約転換率（過去6ヶ月）</div>
+        <div style="position:relative;height:190px;"><canvas id="ga4-reserve-chart"></canvas></div>
         <!-- 参照元/メディア分布 -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:24px;margin-bottom:10px;">
           <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;">参照元 / メディア（最初の参照元）</div>
@@ -1209,30 +1211,54 @@
         ]);
       }).join('');
 
-      // チャート: 予約ページ
-      if (mCharts.ga4r) mCharts.ga4r.destroy();
-      mCharts.ga4r = new Chart(document.getElementById('ga4-reserve-chart').getContext('2d'), {
+      const dualOpts = (pctAxis) => ({
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
+        scales: {
+          y:  { beginAtZero: true, position: 'left',  ticks: { font: { size: 9 }, maxTicksLimit: 5 } },
+          y1: { beginAtZero: true, position: 'right', min: 0, max: pctAxis,
+                ticks: { font: { size: 9 }, maxTicksLimit: 5, callback: v => v + '%' }, grid: { drawOnChartArea: false } },
+        },
+      });
+
+      // チャート1: セッション数 / 予約CTR
+      if (mCharts.ga4s) mCharts.ga4s.destroy();
+      mCharts.ga4s = new Chart(document.getElementById('ga4-sess-chart').getContext('2d'), {
         data: {
           labels: last6.map(fmtYM),
           datasets: [
             { type: 'bar',  label: 'セッション数', data: last6.map(ym => gv(sessMap, ym)),
               backgroundColor: 'rgba(44,74,62,.35)', borderColor: '#2C4A3E', borderWidth: 1.5, yAxisID: 'y' },
-            { type: 'bar',  label: '予約クリック数', data: last6.map(ym => gv(resMap, ym)),
-              backgroundColor: 'rgba(184,122,80,.5)', borderColor: '#B87A50', borderWidth: 1.5, yAxisID: 'y' },
             { type: 'line', label: '予約CTR(%)',
               data: last6.map(ym => { const s = gv(sessMap, ym), r = gv(resMap, ym); return s > 0 ? +(r / s * 100).toFixed(1) : null; }),
+              borderColor: '#B87A50', backgroundColor: 'rgba(184,122,80,.12)', borderWidth: 2,
+              fill: false, tension: 0.3, yAxisID: 'y1', spanGaps: true },
+          ],
+        },
+        options: dualOpts(20),
+      });
+
+      // チャート2: 予約クリック数 / 予約転換率
+      if (mCharts.ga4r) mCharts.ga4r.destroy();
+      mCharts.ga4r = new Chart(document.getElementById('ga4-reserve-chart').getContext('2d'), {
+        data: {
+          labels: last6.map(fmtYM),
+          datasets: [
+            { type: 'bar',  label: '予約クリック数', data: last6.map(ym => gv(resMap, ym)),
+              backgroundColor: 'rgba(184,122,80,.5)', borderColor: '#B87A50', borderWidth: 1.5, yAxisID: 'y' },
+            { type: 'line', label: '予約転換率(%)',
+              data: last6.map(ym => {
+                const recYM = ym.slice(0,4) + '-' + ym.slice(4,6);
+                const mRecs = records.filter(r => r.date === recYM);
+                const book  = getCnt(mRecs, 'VIEsauna') + getCnt(mRecs, 'テントサウナ');
+                const clicks = gv(resMap, ym);
+                return clicks > 0 ? +(book / clicks * 100).toFixed(1) : null;
+              }),
               borderColor: '#2C4A3E', backgroundColor: 'rgba(44,74,62,.08)', borderWidth: 2,
               fill: false, tension: 0.3, yAxisID: 'y1', spanGaps: true },
           ],
         },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
-          scales: {
-            y:  { beginAtZero: true, position: 'left',  ticks: { font: { size: 9 }, maxTicksLimit: 5 } },
-            y1: { beginAtZero: true, position: 'right', ticks: { font: { size: 9 }, maxTicksLimit: 5, callback: v => v + '%' }, grid: { drawOnChartArea: false } },
-          },
-        },
+        options: dualOpts(100),
       });
 
       ga4SrcData.d28   = src28D.rows  || [];
