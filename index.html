@@ -1242,12 +1242,12 @@
     const slice = ga4AllMonths.slice(-n);
     const gv    = (map, ym) => map[ym] || 0;
     const fmtYM = ym => `${ym.slice(0,4)}/${ym.slice(4,6)}`;
-    const dualOpts = (pctAxis) => ({
+    const dualOpts = () => ({
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
       scales: {
         y:  { beginAtZero: true, position: 'left',  ticks: { font: { size: 9 }, maxTicksLimit: 5 } },
-        y1: { beginAtZero: true, position: 'right', min: 0, max: pctAxis,
+        y1: { beginAtZero: true, position: 'right',
               ticks: { font: { size: 9 }, maxTicksLimit: 5, callback: v => v + '%' }, grid: { drawOnChartArea: false } },
       },
     });
@@ -1266,7 +1266,7 @@
             fill: false, tension: 0.3, yAxisID: 'y1', spanGaps: true },
         ],
       },
-      options: dualOpts(20),
+      options: dualOpts(),
     });
 
     // チャート2: 予約クリック数 / 予約転換率
@@ -1289,7 +1289,7 @@
             fill: false, tension: 0.3, yAxisID: 'y1', spanGaps: true },
         ],
       },
-      options: dualOpts(100),
+      options: dualOpts(),
     });
   }
   window.setGA4Period = function(n) { renderGA4Charts(n); };
