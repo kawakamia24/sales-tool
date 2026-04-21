@@ -345,10 +345,7 @@
       <div id="ga4-content" style="display:none">
         <!-- 直近3ヶ月比較 -->
         <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">直近3ヶ月</div>
-        <div id="ga4-month-compare" style="display:flex;gap:8px;margin-bottom:16px;"></div>
-        <!-- 予約転換率カード -->
-        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">予約転換率（クリック→予約）</div>
-        <div id="ga4-booking-compare" style="display:flex;gap:8px;margin-bottom:20px;"></div>
+        <div id="ga4-month-compare" style="display:flex;gap:8px;margin-bottom:20px;"></div>
         <!-- 予約ページチャート -->
         <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px;">セッション数 / 予約クリック数（過去6ヶ月）</div>
         <div style="position:relative;height:200px;"><canvas id="ga4-reserve-chart"></canvas></div>
@@ -1194,22 +1191,16 @@
 
       // 直近3ヶ月カード
       document.getElementById('ga4-month-compare').innerHTML = last3.map(ym => {
+        const recYM   = ym.slice(0,4) + '-' + ym.slice(4,6);
+        const mRecs   = records.filter(r => r.date === recYM);
+        const bookCnt = getCnt(mRecs, 'VIEsauna') + getCnt(mRecs, 'テントサウナ');
+        const clicks  = gv(resMap, ym);
+        const cvr     = clicks > 0 ? (bookCnt / clicks * 100).toFixed(1) + '%' : '—';
         return mkMonthBlock(ym, [
-          [gv(sessMap, ym).toLocaleString(),   'セッション',   'var(--primary)'],
-          [gv(orgMap, ym).toLocaleString(),     '検索流入',     ''],
-          [gv(resMap, ym).toLocaleString(),     '予約クリック数', ''],
-          [resCTR(ym),                          '予約CTR',      ''],
-        ]);
-      }).join('');
-
-      // 予約転換率カード（クリック→実予約）
-      document.getElementById('ga4-booking-compare').innerHTML = last3.map(ym => {
-        const recYM    = ym.slice(0,4) + '-' + ym.slice(4,6);
-        const mRecs    = records.filter(r => r.date === recYM);
-        const bookCnt  = getCnt(mRecs, 'VIEsauna') + getCnt(mRecs, 'テントサウナ');
-        const clicks   = gv(resMap, ym);
-        const cvr      = clicks > 0 ? (bookCnt / clicks * 100).toFixed(1) + '%' : '—';
-        return mkMonthBlock(ym, [
+          [gv(sessMap, ym).toLocaleString(), 'セッション',   'var(--primary)'],
+          [gv(orgMap, ym).toLocaleString(),  '検索流入',     ''],
+          [clicks.toLocaleString(),          '予約クリック数', ''],
+          [resCTR(ym),                       '予約CTR',      ''],
           [cvr, 'クリック転換率', clicks > 0 && bookCnt / clicks >= 0.3 ? 'var(--primary)' : ''],
         ]);
       }).join('');
