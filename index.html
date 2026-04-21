@@ -347,9 +347,16 @@
         <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">直近3ヶ月</div>
         <div id="ga4-month-compare" style="display:flex;gap:8px;margin-bottom:20px;"></div>
         <!-- 予約ページチャート -->
-        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px;">セッション数 / 予約CTR（過去6ヶ月）</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:20px 0 8px;">
+          <div id="ga4-per-label" style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;">セッション数 / 予約CTR（過去6ヶ月）</div>
+          <div style="display:flex;gap:5px;">
+            <button id="ga4-per-6"  onclick="setGA4Period(6)"  style="font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--primary);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;cursor:pointer;">6ヶ月</button>
+            <button id="ga4-per-12" onclick="setGA4Period(12)" style="font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;">1年</button>
+            <button id="ga4-per-24" onclick="setGA4Period(24)" style="font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;">2年</button>
+          </div>
+        </div>
         <div style="position:relative;height:190px;"><canvas id="ga4-sess-chart"></canvas></div>
-        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px;">予約クリック数 / 予約転換率（過去6ヶ月）</div>
+        <div id="ga4-per-label2" style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px;">予約クリック数 / 予約転換率（過去6ヶ月）</div>
         <div style="position:relative;height:190px;"><canvas id="ga4-reserve-chart"></canvas></div>
         <!-- 参照元/メディア分布 -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:24px;margin-bottom:10px;">
@@ -898,6 +905,8 @@
   let scByMonth   = {};
   let scAllMonths = [];
   let ga4SrcData  = { d28: [], total: [] };
+  let ga4Maps     = {};
+  let ga4AllMonths = [];
 
   const SRC_COLORS = ['#2C4A3E','#B87A50','#0891b2','#4f46e5','#e06882','#16a34a','#f59e0b','#be185d','#6366f1','#10b981','#64748b','#f97316','#84cc16','#06b6d4','#8b5cf6'];
 
@@ -1135,7 +1144,7 @@
     content.style.display = 'none';
     try {
       const GA4_URL  = `https://analyticsdata.googleapis.com/v1beta/properties/${GA4_PROPERTY}:runReport`;
-      const dateRng  = [{ startDate: '180daysAgo', endDate: 'yesterday' }];
+      const dateRng  = [{ startDate: '730daysAgo', endDate: 'yesterday' }];
       const dimYM    = [{ name: 'yearMonth' }];
       const orderYM  = [{ dimension: { dimensionName: 'yearMonth' } }];
       const reserveFilter = { filter: { fieldName: 'linkUrl', stringFilter: { matchType: 'CONTAINS', value: 'reserva.be' } } };
@@ -1181,85 +1190,32 @@
         }
         return m;
       };
-      const sessMap   = mkMap(sessD);
-      const igMap     = mkMap(igD);
-      const orgMap    = mkMap(orgD);
-      const resMap    = mkMap(resD);
-      const allMonths = [...new Set([...Object.keys(sessMap), ...Object.keys(igMap), ...Object.keys(orgMap)])].sort();
-      const last6 = allMonths.slice(-6);
-      const last3 = last6.slice(-3);
-      const fmtYM = ym => `${ym.slice(0, 4)}/${ym.slice(4, 6)}`;
+      ga4Maps.sess = mkMap(sessD);
+      ga4Maps.ig   = mkMap(igD);
+      ga4Maps.org  = mkMap(orgD);
+      ga4Maps.res  = mkMap(resD);
+      ga4AllMonths = [...new Set([...Object.keys(ga4Maps.sess), ...Object.keys(ga4Maps.ig), ...Object.keys(ga4Maps.org)])].sort();
+
+      // 直近3ヶ月カード（常に直近3ヶ月）
+      const last3 = ga4AllMonths.slice(-3);
       const gv    = (map, ym) => map[ym] || 0;
-
-      const resCTR = ym => {
-        const s = gv(sessMap, ym), r = gv(resMap, ym);
-        return s > 0 ? (r / s * 100).toFixed(1) + '%' : '—';
-      };
-
-      // 直近3ヶ月カード
       document.getElementById('ga4-month-compare').innerHTML = last3.map(ym => {
         const recYM   = ym.slice(0,4) + '-' + ym.slice(4,6);
         const mRecs   = records.filter(r => r.date === recYM);
         const bookCnt = getCnt(mRecs, 'VIEsauna') + getCnt(mRecs, 'テントサウナ');
-        const clicks  = gv(resMap, ym);
+        const clicks  = gv(ga4Maps.res, ym);
+        const s       = gv(ga4Maps.sess, ym);
+        const ctr     = s > 0 ? (clicks / s * 100).toFixed(1) + '%' : '—';
         const cvr     = clicks > 0 ? (bookCnt / clicks * 100).toFixed(1) + '%' : '—';
         return mkMonthBlock(ym, [
-          [resCTR(ym), '予約CTR',    'var(--primary)', 'lg'],
-          [cvr,        'クリック転換率', clicks > 0 && bookCnt / clicks >= 0.3 ? '#B87A50' : 'var(--text)', 'lg'],
-          [gv(sessMap, ym).toLocaleString(), 'セッション',   '', 'sm'],
-          [clicks.toLocaleString(),          '予約クリック数', '', 'sm'],
+          [ctr,  '予約CTR',    'var(--primary)', 'lg'],
+          [cvr,  'クリック転換率', clicks > 0 && bookCnt / clicks >= 0.3 ? '#B87A50' : 'var(--text)', 'lg'],
+          [s.toLocaleString(),      'セッション',   '', 'sm'],
+          [clicks.toLocaleString(), '予約クリック数', '', 'sm'],
         ]);
       }).join('');
 
-      const dualOpts = (pctAxis) => ({
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
-        scales: {
-          y:  { beginAtZero: true, position: 'left',  ticks: { font: { size: 9 }, maxTicksLimit: 5 } },
-          y1: { beginAtZero: true, position: 'right', min: 0, max: pctAxis,
-                ticks: { font: { size: 9 }, maxTicksLimit: 5, callback: v => v + '%' }, grid: { drawOnChartArea: false } },
-        },
-      });
-
-      // チャート1: セッション数 / 予約CTR
-      if (mCharts.ga4s) mCharts.ga4s.destroy();
-      mCharts.ga4s = new Chart(document.getElementById('ga4-sess-chart').getContext('2d'), {
-        data: {
-          labels: last6.map(fmtYM),
-          datasets: [
-            { type: 'bar',  label: 'セッション数', data: last6.map(ym => gv(sessMap, ym)),
-              backgroundColor: 'rgba(44,74,62,.35)', borderColor: '#2C4A3E', borderWidth: 1.5, yAxisID: 'y' },
-            { type: 'line', label: '予約CTR(%)',
-              data: last6.map(ym => { const s = gv(sessMap, ym), r = gv(resMap, ym); return s > 0 ? +(r / s * 100).toFixed(1) : null; }),
-              borderColor: '#B87A50', backgroundColor: 'rgba(184,122,80,.12)', borderWidth: 2,
-              fill: false, tension: 0.3, yAxisID: 'y1', spanGaps: true },
-          ],
-        },
-        options: dualOpts(20),
-      });
-
-      // チャート2: 予約クリック数 / 予約転換率
-      if (mCharts.ga4r) mCharts.ga4r.destroy();
-      mCharts.ga4r = new Chart(document.getElementById('ga4-reserve-chart').getContext('2d'), {
-        data: {
-          labels: last6.map(fmtYM),
-          datasets: [
-            { type: 'bar',  label: '予約クリック数', data: last6.map(ym => gv(resMap, ym)),
-              backgroundColor: 'rgba(184,122,80,.5)', borderColor: '#B87A50', borderWidth: 1.5, yAxisID: 'y' },
-            { type: 'line', label: '予約転換率(%)',
-              data: last6.map(ym => {
-                const recYM = ym.slice(0,4) + '-' + ym.slice(4,6);
-                const mRecs = records.filter(r => r.date === recYM);
-                const book  = getCnt(mRecs, 'VIEsauna') + getCnt(mRecs, 'テントサウナ');
-                const clicks = gv(resMap, ym);
-                return clicks > 0 ? +(book / clicks * 100).toFixed(1) : null;
-              }),
-              borderColor: '#2C4A3E', backgroundColor: 'rgba(44,74,62,.08)', borderWidth: 2,
-              fill: false, tension: 0.3, yAxisID: 'y1', spanGaps: true },
-          ],
-        },
-        options: dualOpts(100),
-      });
+      renderGA4Charts(6);
 
       ga4SrcData.d28   = src28D.rows  || [];
       ga4SrcData.total = srcAllD.rows || [];
@@ -1272,6 +1228,71 @@
       loadEl.style.color = 'var(--red)';
     }
   }
+
+  function renderGA4Charts(n) {
+    const periodLabel = n === 24 ? '過去2年' : n === 12 ? '過去1年' : '過去6ヶ月';
+    const on  = 'font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--primary);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;cursor:pointer;';
+    const off = 'font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;';
+    document.getElementById('ga4-per-6').style.cssText  = n === 6  ? on : off;
+    document.getElementById('ga4-per-12').style.cssText = n === 12 ? on : off;
+    document.getElementById('ga4-per-24').style.cssText = n === 24 ? on : off;
+    document.getElementById('ga4-per-label').textContent  = `セッション数 / 予約CTR（${periodLabel}）`;
+    document.getElementById('ga4-per-label2').textContent = `予約クリック数 / 予約転換率（${periodLabel}）`;
+
+    const slice = ga4AllMonths.slice(-n);
+    const gv    = (map, ym) => map[ym] || 0;
+    const fmtYM = ym => `${ym.slice(0,4)}/${ym.slice(4,6)}`;
+    const dualOpts = (pctAxis) => ({
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, boxWidth: 12 } } },
+      scales: {
+        y:  { beginAtZero: true, position: 'left',  ticks: { font: { size: 9 }, maxTicksLimit: 5 } },
+        y1: { beginAtZero: true, position: 'right', min: 0, max: pctAxis,
+              ticks: { font: { size: 9 }, maxTicksLimit: 5, callback: v => v + '%' }, grid: { drawOnChartArea: false } },
+      },
+    });
+
+    // チャート1: セッション数 / 予約CTR
+    if (mCharts.ga4s) mCharts.ga4s.destroy();
+    mCharts.ga4s = new Chart(document.getElementById('ga4-sess-chart').getContext('2d'), {
+      data: {
+        labels: slice.map(fmtYM),
+        datasets: [
+          { type: 'bar',  label: 'セッション数', data: slice.map(ym => gv(ga4Maps.sess, ym)),
+            backgroundColor: 'rgba(44,74,62,.35)', borderColor: '#2C4A3E', borderWidth: 1.5, yAxisID: 'y' },
+          { type: 'line', label: '予約CTR(%)',
+            data: slice.map(ym => { const s = gv(ga4Maps.sess, ym), r = gv(ga4Maps.res, ym); return s > 0 ? +(r / s * 100).toFixed(1) : null; }),
+            borderColor: '#B87A50', backgroundColor: 'rgba(184,122,80,.12)', borderWidth: 2,
+            fill: false, tension: 0.3, yAxisID: 'y1', spanGaps: true },
+        ],
+      },
+      options: dualOpts(20),
+    });
+
+    // チャート2: 予約クリック数 / 予約転換率
+    if (mCharts.ga4r) mCharts.ga4r.destroy();
+    mCharts.ga4r = new Chart(document.getElementById('ga4-reserve-chart').getContext('2d'), {
+      data: {
+        labels: slice.map(fmtYM),
+        datasets: [
+          { type: 'bar',  label: '予約クリック数', data: slice.map(ym => gv(ga4Maps.res, ym)),
+            backgroundColor: 'rgba(184,122,80,.5)', borderColor: '#B87A50', borderWidth: 1.5, yAxisID: 'y' },
+          { type: 'line', label: '予約転換率(%)',
+            data: slice.map(ym => {
+              const recYM = ym.slice(0,4) + '-' + ym.slice(4,6);
+              const mRecs = records.filter(r => r.date === recYM);
+              const book  = getCnt(mRecs, 'VIEsauna') + getCnt(mRecs, 'テントサウナ');
+              const clicks = gv(ga4Maps.res, ym);
+              return clicks > 0 ? +(book / clicks * 100).toFixed(1) : null;
+            }),
+            borderColor: '#2C4A3E', backgroundColor: 'rgba(44,74,62,.08)', borderWidth: 2,
+            fill: false, tension: 0.3, yAxisID: 'y1', spanGaps: true },
+        ],
+      },
+      options: dualOpts(100),
+    });
+  }
+  window.setGA4Period = function(n) { renderGA4Charts(n); };
 
   function renderGA4SrcChart(period) {
     const on  = 'font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--primary);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;cursor:pointer;';
