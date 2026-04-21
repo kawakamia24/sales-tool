@@ -352,6 +352,15 @@
         <!-- 予約ページチャート -->
         <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px;">予約ページ（過去6ヶ月）</div>
         <div style="position:relative;height:200px;"><canvas id="ga4-reserve-chart"></canvas></div>
+        <!-- 参照元/メディア分布 -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:24px;margin-bottom:10px;">
+          <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;">参照元 / メディア（最初の参照元）</div>
+          <div style="display:flex;gap:5px;">
+            <button id="ga4-src-28"  onclick="setGA4SrcPeriod('28')"  style="font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--primary);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;cursor:pointer;">直近28日</button>
+            <button id="ga4-src-all" onclick="setGA4SrcPeriod('all')" style="font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;">トータル</button>
+          </div>
+        </div>
+        <div style="position:relative;height:300px;"><canvas id="ga4-src-chart"></canvas></div>
       </div>
     </div>
 
@@ -889,6 +898,9 @@
 
   let scByMonth   = {};
   let scAllMonths = [];
+  let ga4SrcData  = { d28: [], total: [] };
+
+  const SRC_COLORS = ['#2C4A3E','#B87A50','#0891b2','#4f46e5','#e06882','#16a34a','#f59e0b','#be185d','#6366f1','#10b981','#64748b','#f97316','#84cc16','#06b6d4','#8b5cf6'];
 
   window.requestGoogleToken = function() {
     const errEl = document.getElementById('marketing-error');
@@ -1128,7 +1140,15 @@
         { filter: { fieldName: 'pagePath', stringFilter: { matchType: 'CONTAINS', value: '/contact' } } },
       ]}};
 
-      const [sessD, igD, orgD, resD, bounceD] = await Promise.all([
+      const srcReq = (startDate) => gFetch(GA4_URL, { method: 'POST', body: JSON.stringify({
+        dateRanges: [{ startDate, endDate: 'yesterday' }],
+        dimensions: [{ name: 'firstUserSourceMedium' }],
+        metrics:    [{ name: 'activeUsers' }],
+        orderBys:   [{ metric: { metricName: 'activeUsers' }, desc: true }],
+        limit: 15,
+      })});
+
+      const [sessD, igD, orgD, resD, bounceD, src28D, srcAllD] = await Promise.all([
         // 1. 総セッション数
         gFetch(GA4_URL, { method: 'POST', body: JSON.stringify({ dateRanges: dateRng, dimensions: dimYM, metrics: [{ name: 'sessions' }], orderBys: orderYM }) }),
         // 2. Instagram流入
@@ -1149,6 +1169,10 @@
         gFetch(GA4_URL, { method: 'POST', body: JSON.stringify({ dateRanges: dateRng, dimensions: dimYM, metrics: [{ name: 'screenPageViews' }], orderBys: orderYM, dimensionFilter: reserveFilter }) }),
         // 5. 予約ページ離脱率
         gFetch(GA4_URL, { method: 'POST', body: JSON.stringify({ dateRanges: dateRng, dimensions: dimYM, metrics: [{ name: 'bounceRate' }], orderBys: orderYM, dimensionFilter: reserveFilter }) }),
+        // 6. 参照元/メディア（直近28日）
+        srcReq('28daysAgo'),
+        // 7. 参照元/メディア（トータル）
+        srcReq('2020-01-01'),
       ]);
 
       // 月→値マップ生成
@@ -1226,6 +1250,10 @@
         },
       });
 
+      ga4SrcData.d28   = src28D.rows  || [];
+      ga4SrcData.total = srcAllD.rows || [];
+      renderGA4SrcChart('28');
+
       loadEl.style.display = 'none';
       content.style.display = 'block';
     } catch(e) {
@@ -1233,6 +1261,45 @@
       loadEl.style.color = 'var(--red)';
     }
   }
+
+  function renderGA4SrcChart(period) {
+    const on  = 'font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--primary);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;cursor:pointer;';
+    const off = 'font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;';
+    document.getElementById('ga4-src-28').style.cssText  = period === '28'  ? on : off;
+    document.getElementById('ga4-src-all').style.cssText = period === 'all' ? on : off;
+
+    const rows   = period === '28' ? ga4SrcData.d28 : ga4SrcData.total;
+    const labels = rows.map(r => r.dimensionValues[0].value);
+    const values = rows.map(r => parseFloat(r.metricValues[0].value));
+    const total  = values.reduce((s, v) => s + v, 0);
+
+    if (mCharts.ga4Src) mCharts.ga4Src.destroy();
+    mCharts.ga4Src = new Chart(document.getElementById('ga4-src-chart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{ data: values, backgroundColor: SRC_COLORS.slice(0, labels.length), borderRadius: 4, borderWidth: 0 }],
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => {
+            const pct = total > 0 ? (ctx.parsed.x / total * 100).toFixed(1) : '0.0';
+            return ` ${ctx.parsed.x.toLocaleString()} ユーザー（${pct}%）`;
+          }}},
+        },
+        scales: {
+          x: { beginAtZero: true, ticks: { font: { size: 9 }, maxTicksLimit: 5 } },
+          y: { ticks: { font: { size: 10 } } },
+        },
+      },
+    });
+  }
+
+  window.setGA4SrcPeriod = function(period) { renderGA4SrcChart(period); };
 
   window.switchChart = function(type, btn) {
     currentChartType = type;
