@@ -1210,9 +1210,7 @@
         const clicks   = gv(resMap, ym);
         const cvr      = clicks > 0 ? (bookCnt / clicks * 100).toFixed(1) + '%' : '—';
         return mkMonthBlock(ym, [
-          [bookCnt.toString(),  '予約件数（VIE+テント）', 'var(--primary)'],
-          [clicks.toLocaleString(), '予約クリック数',     ''],
-          [cvr,                 'クリック転換率',         clicks > 0 && bookCnt / clicks >= 0.3 ? 'var(--primary)' : ''],
+          [cvr, 'クリック転換率', clicks > 0 && bookCnt / clicks >= 0.3 ? 'var(--primary)' : ''],
         ]);
       }).join('');
 
