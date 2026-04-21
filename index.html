@@ -967,10 +967,15 @@
     const label = `${ym.slice(0, 4)}/${ym.slice(4, 6)}`;
     return `<div style="flex:1;min-width:85px;background:var(--surface);border-radius:10px;padding:10px 8px;text-align:center;">
       <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);margin-bottom:8px;">${label}</div>
-      ${rows.map(([val, lbl, color]) => `
-        <div style="font-size:${val.length > 5 ? '0.82' : '0.95'}rem;font-weight:700;color:${color || 'var(--text)'};">${val}</div>
-        <div style="font-size:0.6rem;color:var(--text-3);margin-bottom:5px;">${lbl}</div>
-      `).join('')}
+      ${rows.map(([val, lbl, color, size]) => {
+        const fs   = size === 'lg' ? '1.15' : size === 'sm' ? '0.72' : (val.length > 5 ? '0.82' : '0.95');
+        const fw   = size === 'sm' ? '500' : '700';
+        const col  = color || (size === 'sm' ? 'var(--text-3)' : 'var(--text)');
+        const mb   = size === 'sm' ? '3' : '5';
+        return `
+        <div style="font-size:${fs}rem;font-weight:${fw};color:${col};">${val}</div>
+        <div style="font-size:0.6rem;color:var(--text-3);margin-bottom:${mb}px;">${lbl}</div>`;
+      }).join('')}
     </div>`;
   }
 
@@ -1197,11 +1202,10 @@
         const clicks  = gv(resMap, ym);
         const cvr     = clicks > 0 ? (bookCnt / clicks * 100).toFixed(1) + '%' : '—';
         return mkMonthBlock(ym, [
-          [gv(sessMap, ym).toLocaleString(), 'セッション',   'var(--primary)'],
-          [gv(orgMap, ym).toLocaleString(),  '検索流入',     ''],
-          [clicks.toLocaleString(),          '予約クリック数', ''],
-          [resCTR(ym),                       '予約CTR',      ''],
-          [cvr, 'クリック転換率', clicks > 0 && bookCnt / clicks >= 0.3 ? 'var(--primary)' : ''],
+          [resCTR(ym), '予約CTR',    'var(--primary)', 'lg'],
+          [cvr,        'クリック転換率', clicks > 0 && bookCnt / clicks >= 0.3 ? '#B87A50' : 'var(--text)', 'lg'],
+          [gv(sessMap, ym).toLocaleString(), 'セッション',   '', 'sm'],
+          [clicks.toLocaleString(),          '予約クリック数', '', 'sm'],
         ]);
       }).join('');
 
