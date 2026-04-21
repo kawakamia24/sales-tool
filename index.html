@@ -1213,7 +1213,7 @@
         const cvrCol  = cvrVal == null ? '' : cvrVal >= 6  ? '#16a34a' : cvrVal >= 3  ? '#f59e0b' : 'var(--red)';
         return mkMonthBlock(ym, [
           [ctr, '予約CTR',     ctrCol],
-          [cvr, 'クリック転換率', cvrCol],
+          [cvr, '予約転換率', cvrCol],
           [s.toLocaleString(),      'セッション',   ''],
           [clicks.toLocaleString(), '予約クリック数', ''],
         ]);
