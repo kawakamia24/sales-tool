@@ -411,7 +411,7 @@
 <!-- ========== メインスクリプト（認証 + Firestore を1つにまとめた） ========== -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, setDoc, getDocs, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
   // ============================================================
@@ -530,9 +530,11 @@
 
   window.saveColaStore = async function(idx) {
     const store = COLA_STORES[idx];
-    const deliveries = parseInt(document.getElementById(`cola-del-${idx}`).value, 10) || 0;
+    const qty = parseInt(document.getElementById(`cola-del-${idx}`).value, 10) || 0;
+    if (qty <= 0) { showToast('数量を入力してください'); return; }
     try {
-      await setDoc(doc(db, "cola_stores", store.name), { deliveries }, { merge: true });
+      await setDoc(doc(db, "cola_stores", store.name), { deliveries: increment(qty) }, { merge: true });
+      document.getElementById(`cola-del-${idx}`).value = '';
       showToast('保存しました！');
     } catch(e) {
       alert('保存に失敗しました: ' + e.message);
@@ -590,13 +592,14 @@
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
         <div>
-          <label style="font-size:0.65rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">${si === 0 ? '仕入数' : '納品数'}</label>
-          <input type="number" id="cola-del-${si}" value="${st.deliveries}" min="0"
+          <label style="font-size:0.65rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;">${si === 0 ? '今回の仕入数' : '今回の納品数'}</label>
+          <input type="number" id="cola-del-${si}" placeholder="例: 10" min="1"
             style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:0.95rem;font-family:inherit;background:#f8fafc;outline:none;">
         </div>
         <div style="background:#f8fafc;border-radius:10px;padding:10px;text-align:center;border:1.5px solid #e2e8f0;">
-          <div style="font-size:0.65rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">当月販売数</div>
-          <div style="font-size:1.15rem;font-weight:800;color:#0f172a;">${st.soldMonth} 個</div>
+          <div style="font-size:0.65rem;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:2px;">${si === 0 ? '累計仕入数' : '累計納品数'}</div>
+          <div style="font-size:1.15rem;font-weight:800;color:#0f172a;">${st.deliveries} 個</div>
+          <div style="font-size:0.62rem;color:#94a3b8;margin-top:2px;">当月販売 ${st.soldMonth} 個</div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
@@ -611,7 +614,7 @@
       </div>
       <button onclick="saveColaStore(${si})"
         style="width:100%;padding:11px;background:linear-gradient(135deg,#4f46e5,#6366f1);color:white;border:none;border-radius:10px;font-weight:700;font-size:0.88rem;cursor:pointer;font-family:inherit;box-shadow:0 3px 10px rgba(79,70,229,0.25);">
-        ${si === 0 ? '仕入数を保存' : '納品数を保存'}
+        ${si === 0 ? '仕入を追加' : '納品を追加'}
       </button>
     </div>`;
 
