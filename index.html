@@ -566,7 +566,7 @@
       const inventory = i === 0
         ? Math.max(0, vieDeliveries - otherDeliveries - sold)
         : Math.max(0, deliveries - sold);
-      return { deliveries, sold, soldMonth, inventory, revenue: sold * store.price };
+      return { deliveries, sold, soldMonth, inventory, revenue: soldMonth * store.price };
     });
 
     const thisMonthSold = records
