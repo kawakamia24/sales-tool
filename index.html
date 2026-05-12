@@ -308,30 +308,30 @@
 
     <!-- GA4 カード -->
     <div class="card" id="ga4-card" style="display:none">
-      <div class="analysis-section-title">Google Analytics <span style="font-weight:400;font-size:0.7rem;opacity:.7;">（月別）</span></div>
-      <div id="ga4-loading" style="font-size:0.84rem;color:var(--text-3);padding:8px 0;">読み込み中...</div>
+      <div class="analysis-section-title">Google Analytics <span style="font-weight:400;font-size:0.7rem;opacity:.7;">(Monthly)</span></div>
+      <div id="ga4-loading" style="font-size:0.84rem;color:var(--text-3);padding:8px 0;">Loading...</div>
       <div id="ga4-content" style="display:none">
-        <!-- 直近3ヶ月比較 -->
-        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">直近3ヶ月</div>
+        <!-- Last 3 Months -->
+        <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Last 3 Months</div>
         <div id="ga4-month-compare" style="display:flex;gap:8px;margin-bottom:20px;"></div>
-        <!-- 予約ページチャート -->
+        <!-- Charts -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin:20px 0 8px;">
-          <div id="ga4-per-label" style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;">セッション数 / 予約CTR（過去6ヶ月）</div>
+          <div id="ga4-per-label" style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;">Sessions / Booking CTR (Last 6M)</div>
           <div style="display:flex;gap:5px;">
-            <button id="ga4-per-6"  onclick="setGA4Period(6)"  style="font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--primary);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;cursor:pointer;">6ヶ月</button>
-            <button id="ga4-per-12" onclick="setGA4Period(12)" style="font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;">1年</button>
-            <button id="ga4-per-24" onclick="setGA4Period(24)" style="font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;">2年</button>
+            <button id="ga4-per-6"  onclick="setGA4Period(6)"  style="font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--primary);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;cursor:pointer;">6M</button>
+            <button id="ga4-per-12" onclick="setGA4Period(12)" style="font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;">1Y</button>
+            <button id="ga4-per-24" onclick="setGA4Period(24)" style="font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;">2Y</button>
           </div>
         </div>
         <div style="position:relative;height:190px;"><canvas id="ga4-sess-chart"></canvas></div>
-        <div id="ga4-per-label2" style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px;">予約クリック数 / 予約転換率（過去6ヶ月）</div>
+        <div id="ga4-per-label2" style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin:20px 0 8px;">Booking Clicks / Conv. Rate (Last 6M)</div>
         <div style="position:relative;height:190px;"><canvas id="ga4-reserve-chart"></canvas></div>
-        <!-- 参照元/メディア分布 -->
+        <!-- Source / Medium -->
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:24px;margin-bottom:10px;">
-          <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;">参照元 / メディア（最初の参照元）</div>
+          <div style="font-size:0.66rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;">Source / Medium (First User)</div>
           <div style="display:flex;gap:5px;">
-            <button id="ga4-src-28"  onclick="setGA4SrcPeriod('28')"  style="font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--primary);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;cursor:pointer;">直近28日</button>
-            <button id="ga4-src-all" onclick="setGA4SrcPeriod('all')" style="font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;">トータル</button>
+            <button id="ga4-src-28"  onclick="setGA4SrcPeriod('28')"  style="font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--primary);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;cursor:pointer;">Last 28 Days</button>
+            <button id="ga4-src-all" onclick="setGA4SrcPeriod('all')" style="font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;">All Time</button>
           </div>
         </div>
         <div style="position:relative;height:300px;"><canvas id="ga4-src-chart"></canvas></div>
@@ -1218,10 +1218,10 @@
         const ctrCol  = ctrVal == null ? '' : ctrVal >= 30 ? '#16a34a' : ctrVal >= 20 ? '#f59e0b' : 'var(--red)';
         const cvrCol  = cvrVal == null ? '' : cvrVal >= 6  ? '#16a34a' : cvrVal >= 3  ? '#f59e0b' : 'var(--red)';
         return mkMonthBlock(ym, [
-          [ctr, '予約CTR',     ctrCol],
-          [cvr, '予約転換率', cvrCol],
-          [s.toLocaleString(),      'セッション',   ''],
-          [clicks.toLocaleString(), '予約クリック数', ''],
+          [ctr, 'Booking CTR',  ctrCol],
+          [cvr, 'Conv. Rate',   cvrCol],
+          [s.toLocaleString(),      'Sessions',       ''],
+          [clicks.toLocaleString(), 'Booking Clicks', ''],
         ]);
       }).join('');
 
@@ -1240,14 +1240,14 @@
   }
 
   function renderGA4Charts(n) {
-    const periodLabel = n === 24 ? '過去2年' : n === 12 ? '過去1年' : '過去6ヶ月';
+    const periodLabel = n === 24 ? 'Last 2Y' : n === 12 ? 'Last 1Y' : 'Last 6M';
     const on  = 'font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--primary);background:var(--primary);color:#fff;font-family:inherit;font-weight:600;cursor:pointer;';
     const off = 'font-size:0.68rem;padding:3px 9px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);font-family:inherit;font-weight:600;cursor:pointer;';
     document.getElementById('ga4-per-6').style.cssText  = n === 6  ? on : off;
     document.getElementById('ga4-per-12').style.cssText = n === 12 ? on : off;
     document.getElementById('ga4-per-24').style.cssText = n === 24 ? on : off;
-    document.getElementById('ga4-per-label').textContent  = `セッション数 / 予約CTR（${periodLabel}）`;
-    document.getElementById('ga4-per-label2').textContent = `予約クリック数 / 予約転換率（${periodLabel}）`;
+    document.getElementById('ga4-per-label').textContent  = `Sessions / Booking CTR (${periodLabel})`;
+    document.getElementById('ga4-per-label2').textContent = `Booking Clicks / Conv. Rate (${periodLabel})`;
 
     const slice = ga4AllMonths.slice(-n);
     const gv    = (map, ym) => map[ym] || 0;
@@ -1268,9 +1268,9 @@
       data: {
         labels: slice.map(fmtYM),
         datasets: [
-          { type: 'bar',  label: 'セッション数', data: slice.map(ym => gv(ga4Maps.sess, ym)),
+          { type: 'bar',  label: 'Sessions', data: slice.map(ym => gv(ga4Maps.sess, ym)),
             backgroundColor: 'rgba(44,74,62,.35)', borderColor: '#2C4A3E', borderWidth: 1.5, yAxisID: 'y' },
-          { type: 'line', label: '予約CTR(%)',
+          { type: 'line', label: 'Booking CTR(%)',
             data: slice.map(ym => { const s = gv(ga4Maps.sess, ym), r = gv(ga4Maps.res, ym); return s > 0 ? +(r / s * 100).toFixed(1) : null; }),
             borderColor: '#B87A50', backgroundColor: 'rgba(184,122,80,.12)', borderWidth: 2,
             fill: false, tension: 0.3, yAxisID: 'y1', spanGaps: true },
@@ -1285,9 +1285,9 @@
       data: {
         labels: slice.map(fmtYM),
         datasets: [
-          { type: 'bar',  label: '予約クリック数', data: slice.map(ym => gv(ga4Maps.res, ym)),
+          { type: 'bar',  label: 'Booking Clicks', data: slice.map(ym => gv(ga4Maps.res, ym)),
             backgroundColor: 'rgba(184,122,80,.5)', borderColor: '#B87A50', borderWidth: 1.5, yAxisID: 'y' },
-          { type: 'line', label: '予約転換率(%)',
+          { type: 'line', label: 'Conv. Rate(%)',
             data: slice.map(ym => {
               const recYM = ym.slice(0,4) + '-' + ym.slice(4,6);
               const mRecs = records.filter(r => r.date === recYM);
@@ -1330,7 +1330,7 @@
           legend: { display: false },
           tooltip: { callbacks: { label: ctx => {
             const pct = total > 0 ? (ctx.parsed.x / total * 100).toFixed(1) : '0.0';
-            return ` ${ctx.parsed.x.toLocaleString()} ユーザー（${pct}%）`;
+            return ` ${ctx.parsed.x.toLocaleString()} users (${pct}%)`;
           }}},
         },
         scales: {
